@@ -37,7 +37,6 @@ export interface SynthLayer {
 export interface ExecutionResult {
 	success: boolean;
 	error?: CodeError;
-	disposeCallback?: () => void;
 }
 
 export interface ValidationResult {

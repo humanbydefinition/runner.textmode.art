@@ -47,7 +47,7 @@ export interface ExecutionContextOptions {
  * Handles the creation of globals, execution of user code, and cleanup.
  */
 export class ExecutionContext {
-    private userDispose: (() => void) | null = null;
+    private userDisposers: Array<() => void> = [];
     private drawErrorOccurred = false;
     private proxyFactory: SafeProxyFactory;
     private options: ExecutionContextOptions;
@@ -92,6 +92,7 @@ export class ExecutionContext {
         // Prepare globals
         const globals: Record<string, unknown> = {
             t: safeT,
+            onDispose: (callback: unknown) => this.registerUserDispose(callback),
             ...SYNTH_GLOBALS,
         };
 
@@ -103,16 +104,16 @@ export class ExecutionContext {
             const fn = new Function(...globalKeys, this.wrapUserCode(code));
             const result = await fn(...globalValues);
 
-            // Store dispose callback if returned
+            // Preserve the existing returned-dispose callback behavior.
             if (typeof result === 'function') {
-                this.userDispose = result;
+                this.userDisposers.push(result);
             }
 
             return {
                 success: true,
-                disposeCallback: this.userDispose ?? undefined,
             };
         } catch (error) {
+            this.dispose();
             return {
                 success: false,
                 error: {
@@ -137,18 +138,26 @@ export class ExecutionContext {
         return this.drawErrorOccurred;
     }
 
+    private registerUserDispose(callback: unknown): void {
+        if (typeof callback !== 'function') {
+            throw new TypeError('onDispose expects a function');
+        }
+
+        this.userDisposers.push(callback as () => void);
+    }
+
     /**
      * Dispose current execution resources
      */
     dispose(): void {
-        // Call user dispose callback
-        if (this.userDispose) {
+        const disposers = this.userDisposers.splice(0).reverse();
+
+        for (const dispose of disposers) {
             try {
-                this.userDispose();
+                dispose();
             } catch (e) {
                 console.warn('Error in user dispose:', e);
             }
-            this.userDispose = null;
         }
     }
 }
