@@ -1,6 +1,7 @@
 import type { IErrorReporter } from './textmode.types';
 import type { RunnerToParentMessage } from '@/protocol/textmode';
 import { normalizeError } from '@/core/errors/normalizeError';
+import type { CodeError } from '@/core/types';
 
 export type RunnerMessageSender = (msg: RunnerToParentMessage) => void;
 
@@ -17,7 +18,7 @@ export class ErrorReporter implements IErrorReporter {
     /**
      * Report an error to the parent window
      */
-    report(error: Error | string | Event): void {
+	report(error: Error | string | Event | CodeError): void {
         const runtimeError = normalizeError(error);
         this.sendMessage({
             type: 'RUN_ERROR',

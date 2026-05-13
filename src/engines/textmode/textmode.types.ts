@@ -50,7 +50,7 @@ export interface PendingExecution {
 }
 
 export interface IErrorReporter {
-	report(error: Error | string | Event): void;
+	report(error: Error | string | Event | CodeError): void;
 }
 
 export interface IFrameScheduler {

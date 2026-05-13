@@ -1,6 +1,7 @@
 import type { ExecutionResult, ValidationResult } from './textmode.types';
 import { SafeProxyFactory } from './SafeProxyFactory';
 import { ErrorReporter } from '@/engines/textmode/ErrorReporter';
+import { normalizeError } from '@/core/errors/normalizeError';
 import {
     src,
     osc,
@@ -116,10 +117,7 @@ export class ExecutionContext {
             this.dispose();
             return {
                 success: false,
-                error: {
-                    message: (error as Error).message,
-                    stack: (error as Error).stack,
-                },
+                error: normalizeError(error),
             };
         }
     }

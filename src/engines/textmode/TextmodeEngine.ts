@@ -211,7 +211,7 @@ export class TextmodeEngine {
 				this.transport.send({ type: 'RUN_OK', timestamp: Date.now() });
 			} else if (result.error) {
 				// Runtime error
-				this.errorReporter.report(new Error(result.error.message));
+				this.errorReporter.report(result.error);
 
 				// Attempt restore
 				if (this.lastWorkingCode && this.lastWorkingCode !== code) {
