@@ -6,8 +6,6 @@ export interface SafeProxyOptions {
     onDrawError: (error: Error) => void;
     /** Whether draw errors have occurred (to skip further draw calls) */
     hasDrawError: () => boolean;
-    /** Optional media proxy URL for CORS fallback */
-    mediaProxyUrl?: string;
 }
 
 /**
@@ -134,12 +132,9 @@ export class SafeProxyFactory {
             return Promise.reject(new Error('loadImage/loadVideo is not a function'));
         }
 
-        const originalUrl = src;
-        const fallbackUrl = this.getProxyUrl(src);
         const invoke = (url: string) => (value as (arg: string) => Promise<unknown>).call(target, url);
-        const loadUrl = fallbackUrl && fallbackUrl !== originalUrl ? fallbackUrl : originalUrl;
-        const cacheKey = `${type}:${loadUrl}`;
-        return this.getOrSetCachedLoad(cacheKey, () => invoke(loadUrl));
+        const cacheKey = `${type}:${src}`;
+        return this.getOrSetCachedLoad(cacheKey, () => invoke(src));
     }
 
     private wrapTextmodeFontLoad(
@@ -159,11 +154,9 @@ export class SafeProxyFactory {
             return invoke(fontSource, setActive);
         }
 
-        const fallbackUrl = this.getProxyUrl(fontSource);
-        const loadUrl = fallbackUrl && fallbackUrl !== fontSource ? fallbackUrl : fontSource;
-        const cacheKey = `font:${loadUrl}`;
+        const cacheKey = `font:${fontSource}`;
         const activeRequested = setActive !== false;
-        const cachedFontPromise = this.getOrSetCachedLoad(cacheKey, () => invoke(loadUrl, false));
+        const cachedFontPromise = this.getOrSetCachedLoad(cacheKey, () => invoke(fontSource, false));
 
         if (!activeRequested) {
             return cachedFontPromise;
@@ -183,10 +176,8 @@ export class SafeProxyFactory {
             return invoke(fontSource);
         }
 
-        const fallbackUrl = this.getProxyUrl(fontSource);
-        const loadUrl = fallbackUrl && fallbackUrl !== fontSource ? fallbackUrl : fontSource;
-        const cacheKey = `layer-font:${loadUrl}`;
-        const cachedFontPromise = this.getOrSetCachedLoad(cacheKey, () => invoke(loadUrl));
+        const cacheKey = `layer-font:${fontSource}`;
+        const cachedFontPromise = this.getOrSetCachedLoad(cacheKey, () => invoke(fontSource));
 
         return cachedFontPromise.then((font) => invoke(font));
     }
@@ -214,24 +205,4 @@ export class SafeProxyFactory {
         return loadPromise;
     }
 
-    private getProxyUrl(src: string): string | null {
-        if (!this.options.mediaProxyUrl) return null;
-        if (!src) return null;
-        if (src.startsWith('data:') || src.startsWith('blob:')) return null;
-
-        try {
-            const resolved = new URL(src); // Will throw if src is relative
-
-            // Only proxy absolute http(s) URLs that are cross-origin
-            if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') return null;
-
-            const runnerOrigin = new URL(window.location.href).origin;
-            if (resolved.origin === runnerOrigin) return null;
-
-            const encoded = encodeURIComponent(resolved.toString());
-            return `${this.options.mediaProxyUrl}?url=${encoded}`;
-        } catch {
-            return null;
-        }
-    }
 }
