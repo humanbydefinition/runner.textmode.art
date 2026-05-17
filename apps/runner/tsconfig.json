@@ -1,0 +1,16 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "allowImportingTsExtensions": true,
+        "composite": true,
+        "noEmit": true,
+        "paths": {
+            "@/*": ["./src/*"],
+            "@textmode/runner-protocol": ["../../packages/runner-protocol/src/index.ts"]
+        }
+    },
+    "include": ["src", "tests", "vite.config.ts", "vitest.config.ts"],
+    "references": [
+        { "path": "../../packages/runner-protocol" }
+    ]
+}

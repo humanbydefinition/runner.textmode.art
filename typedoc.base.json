@@ -1,0 +1,44 @@
+{
+    "readme": "none",
+    "excludeInternal": true,
+    "excludePrivate": true,
+    "excludeProtected": true,
+    "excludeExternals": false,
+    "includeVersion": false,
+    "disableSources": true,
+    "useCodeBlocks": true,
+    "jsDocCompatibility": {
+        "exampleTag": false
+    },
+    "tsconfig": "tsconfig.json",
+    "exclude": [
+        "**/node_modules/**"
+    ],
+    "sort": [
+        "source-order"
+    ],
+    "logLevel": "Verbose",
+    "plugin": [
+        "typedoc-plugin-markdown",
+        "typedoc-plugin-frontmatter",
+        "typedoc-vitepress-theme"
+    ],
+    "frontmatterGlobals": {
+        "layout": "doc",
+        "editLink": true
+    },
+    "frontmatterCommentTags": [
+        "author",
+        "since",
+        "deprecated"
+    ],
+    "preserveFrontmatterCommentTags": false,
+    "frontmatterNamingConvention": "camelCase",
+    "indexFormat": "table",
+    "parametersFormat": "table",
+    "interfacePropertiesFormat": "table",
+    "enumMembersFormat": "table",
+    "propertyMembersFormat": "table",
+    "typeDeclarationFormat": "table",
+    "cleanOutputDir": true
+}

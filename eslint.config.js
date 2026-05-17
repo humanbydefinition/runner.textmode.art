@@ -5,11 +5,11 @@ import importPlugin from 'eslint-plugin-import';
 
 const architectureZones = [
 	// core should stay independent from concrete runner implementations
-	{ target: './src/core', from: './src/engines/textmode' },
+	{ target: './apps/runner/src/core', from: './apps/runner/src/engines/textmode' },
 ];
 
 export default [
-	{ ignores: ['dist'] },
+	{ ignores: ['**/dist'] },
 	{
 		files: ['**/*.{ts,js}'],
 		languageOptions: {

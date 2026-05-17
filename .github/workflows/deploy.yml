@@ -31,12 +31,12 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_RUNNER_PARENT_ORIGINS: https://synth.textmode.art
+          VITE_RUNNER_PARENT_ORIGINS: https://synth.textmode.art,https://editor.textmode.art
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: dist
+          path: apps/runner/dist
 
   deploy:
     permissions:

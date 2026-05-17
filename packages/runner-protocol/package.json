@@ -1,0 +1,32 @@
+{
+    "name": "@textmode/runner-protocol",
+    "version": "0.1.0",
+    "description": "Shared message protocol and validators for the hosted textmode runner iframe.",
+    "license": "CC0-1.0",
+    "type": "module",
+    "sideEffects": false,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "dist/**/*.d.ts",
+        "dist/**/*.js"
+    ],
+    "scripts": {
+        "build": "tsc -b",
+        "check-types": "tsc -p tsconfig.json --noEmit",
+        "lint": "eslint .",
+        "test": "vitest run --passWithNoTests",
+        "build:docs": "typedoc --options typedoc.json",
+        "dev:docs": "typedoc --options typedoc.json --watch",
+        "prepare": "npm run build"
+    }
+}
