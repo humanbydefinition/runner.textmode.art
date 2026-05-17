@@ -1,4 +1,4 @@
-# rastergang.textmode.art
+# runner.textmode.art
 
 <div align="center">
 
@@ -7,7 +7,7 @@
 
 </div>
 
-`rastergang.textmode.art` is a browser-based sandbox runner for [`synth.textmode.art`](https://synth.textmode.art). It runs user sketches inside an isolated iframe, boots a `textmode.js` rendering context, and communicates execution state back to the parent editor over a small message protocol.
+`runner.textmode.art` is a browser-based sandbox runner for [`synth.textmode.art`](https://synth.textmode.art). It runs user sketches inside an isolated iframe, boots a `textmode.js` rendering context, and communicates execution state back to the parent editor over a small message protocol.
 
 ## Features
 
@@ -21,7 +21,7 @@
 
 This app is intended to be embedded by **[synth.textmode.art](https://synth.textmode.art)**.
 
-For the production deployment, the iframe is served from **[rastergang.textmode.art](https://rastergang.textmode.art)**.
+For the production deployment, the iframe is served from **[runner.textmode.art](https://runner.textmode.art)**.
 
 ## Development
 
