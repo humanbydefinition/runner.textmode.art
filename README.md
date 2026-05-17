@@ -7,56 +7,96 @@
 
 </div>
 
-`runner.textmode.art` is a browser-based sandbox runner for textmode host apps. It runs user sketches inside an isolated iframe, boots a `textmode.js` rendering context, and communicates execution state back to the parent app over a small message protocol.
+Monorepo for the hosted textmode runner app and its shared browser integration packages.
 
-## Features
+`runner.textmode.art` is the sandboxed iframe runtime used by textmode host apps. It runs user sketches in an isolated browser context, boots a `textmode.js` rendering environment, and communicates with host apps through a small typed message protocol.
 
-- **Sandboxed execution**: Runs sketches inside a dedicated iframe instead of directly in the editor page.
-- **Parent/runner handshake**: Accepts initialization only from allowed parent origins and establishes a `MessagePort` for communication.
-- **Textmode runtime**: Creates a full-screen `textmode.js` instance with `textmode.synth.js` and `textmode.filters.js` plugins enabled.
-- **Sketch lifecycle control**: Supports code execution, soft resets, teardown, resize handling, and runtime error reporting.
-- **Top-level guardrails**: Redirects top-level visits back to the editor in production while still allowing direct debug access during local development.
+## Workspaces
 
-## Getting started
+| Workspace | Purpose | License |
+|:--|:--|:--|
+| [`apps/runner`](./apps/runner) | Hosted Vite app deployed to [runner.textmode.art](https://runner.textmode.art). | AGPL-3.0-or-later |
+| [`packages/runner-protocol`](./packages/runner-protocol) | Shared wire protocol types, capabilities, and runtime validators. | CC0-1.0 |
+| [`packages/runner-client`](./packages/runner-client) | Browser iframe client used by host apps to mount and control the runner. | AGPL-3.0-or-later |
 
-This app is intended to be embedded by textmode host apps such as **[synth.textmode.art](https://synth.textmode.art)** and **[editor.textmode.art](https://editor.textmode.art)**.
+Public package imports are root-only:
 
-For the production deployment, the iframe is served from **[runner.textmode.art](https://runner.textmode.art)**.
+```ts
+import { IframeTextmodeRuntime } from '@textmode/runner-client';
+import { isRunnerMessage } from '@textmode/runner-protocol';
+```
 
 ## Development
 
-To run the project locally:
+Install dependencies from the monorepo root:
 
-```bash
-# Install dependencies
+```sh
 npm install
-
-# Start dev server
-npm run dev
-
-# Build for production
-npm run build
 ```
 
-Additional checks:
+Start the runner app:
 
-```bash
+```sh
+npm run dev
+```
+
+Run the full workspace checks:
+
+```sh
 npm run check-types
 npm run lint
 npm run test
+npm run build
 ```
 
-Environment variables:
+Generate package API documentation:
 
-- `VITE_RUNNER_PARENT_ORIGINS`: Comma-separated list of allowed parent origins. Defaults to `*` in development and an empty list in production when unset.
+```sh
+npm run build:docs
+```
 
-The example configuration in `.env.example` allows `https://synth.textmode.art` and `https://editor.textmode.art` as production parent origins.
+## Deployment
 
-When opened directly in development, the runner allows top-level debugging with `?debug`; otherwise it redirects to the parent editor URL.
+GitHub Pages deployment is handled by [`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml).
+
+The workflow:
+
+- installs workspace dependencies with `npm ci`
+- builds protocol, client, and runner workspaces with `npm run build`
+- sets `VITE_RUNNER_PARENT_ORIGINS` for production host apps
+- uploads `apps/runner/dist` as the Pages artifact
+
+The runner app has its own deployment and environment notes in [`apps/runner/README.md`](./apps/runner/README.md).
+
+## Package Releases
+
+`@textmode/runner-protocol` and `@textmode/runner-client` are published from this monorepo.
+
+Before publishing either package, verify the tarball contents:
+
+```sh
+npm pack --dry-run -w @textmode/runner-protocol
+npm pack --dry-run -w @textmode/runner-client
+```
+
+Publish public scoped packages with:
+
+```sh
+npm publish --access public -w @textmode/runner-protocol
+npm publish --access public -w @textmode/runner-client
+```
+
+Publish `@textmode/runner-protocol` before `@textmode/runner-client` when releasing matching first-party versions, because the client depends on the protocol package.
 
 ## License
 
-This project is licensed under the **GNU Affero General Public License v3.0**.
+This monorepo contains packages with different licenses:
+
+- [`apps/runner`](./apps/runner/LICENSE): AGPL-3.0-or-later
+- [`packages/runner-client`](./packages/runner-client/LICENSE): AGPL-3.0-or-later
+- [`packages/runner-protocol`](./packages/runner-protocol/LICENSE): CC0-1.0
+
+The root [`LICENSE`](./LICENSE) covers the AGPL-licensed parts of the repository.
 
 ### Acknowledgements
 
