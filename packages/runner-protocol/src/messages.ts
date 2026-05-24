@@ -138,13 +138,28 @@ export interface FontLoadedMessage {
 }
 
 /**
- * Font load failure result.
+ * Current active font metadata.
+ *
+ * @category Messages
+ */
+export interface FontMetadataMessage {
+	type: 'FONT_METADATA';
+	/** Request identifier for the metadata request. */
+	requestId: string;
+	/** Active font family name detected by the runner. */
+	familyName: string | null;
+	/** Characters available in the active font. */
+	characters: string[];
+}
+
+/**
+ * Font load or metadata failure result.
  *
  * @category Messages
  */
 export interface FontErrorMessage {
 	type: 'FONT_ERROR';
-	/** Request identifier for the font load call. */
+	/** Request identifier for the font request. */
 	requestId: string;
 	/** Human-readable error message. */
 	message: string;
@@ -191,6 +206,7 @@ export type RunnerToParentMessage =
 	| ExportResultMessage
 	| ExportProgressMessage
 	| FontLoadedMessage
+	| FontMetadataMessage
 	| FontErrorMessage
 	| PlaybackStateMessage
 	| PongMessage;
@@ -289,6 +305,17 @@ export interface LoadFontMessage {
 }
 
 /**
+ * Request metadata for the runner's active font.
+ *
+ * @category Messages
+ */
+export interface GetFontMetadataMessage {
+	type: 'GET_FONT_METADATA';
+	/** Request identifier for result routing. */
+	requestId: string;
+}
+
+/**
  * Request to control or inspect playback.
  *
  * @category Messages
@@ -329,6 +356,7 @@ export type ParentToRunnerMessage =
 	| SetSettingsMessage
 	| ExportMessage
 	| LoadFontMessage
+	| GetFontMetadataMessage
 	| PlaybackMessage
 	| PingMessage;
 

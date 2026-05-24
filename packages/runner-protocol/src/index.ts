@@ -42,6 +42,8 @@ export {
 	type ExportResultMessage,
 	type FontErrorMessage,
 	type FontLoadedMessage,
+	type FontMetadataMessage,
+	type GetFontMetadataMessage,
 	type InitMessage,
 	type LoadFontMessage,
 	type Message,
