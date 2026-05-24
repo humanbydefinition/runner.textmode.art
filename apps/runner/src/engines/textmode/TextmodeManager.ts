@@ -17,6 +17,7 @@ type TextmodifierWithExports = Textmodifier & {
     toString?: (options?: Record<string, unknown>) => string;
     saveGIF?: (options?: Record<string, unknown>) => Promise<void>;
     saveWEBM?: (options?: Record<string, unknown>) => Promise<void>;
+    _coreReady?: Promise<void>;
 };
 
 type InternalFontManager = {
@@ -32,6 +33,13 @@ const DEFAULT_SETTINGS: RuntimeSettings = {
     height: 640,
     fontSize: 16,
     frameRate: 60,
+};
+const FONT_METADATA_RETRY_COUNT = 8;
+const FONT_METADATA_RETRY_DELAY_MS = 50;
+
+type FontMetadata = {
+    familyName: string | null;
+    characters: string[];
 };
 
 /**
@@ -322,7 +330,7 @@ export class TextmodeManager implements ITextmodeManager {
         buffer: ArrayBuffer,
         mimeType = 'font/woff',
         fallbackName: string | null = null
-    ): Promise<{ familyName: string | null; characters: string[] }> {
+    ): Promise<FontMetadata> {
         if (!this.instance) {
             throw new Error('textmode is not initialized');
         }
@@ -332,20 +340,29 @@ export class TextmodeManager implements ITextmodeManager {
 
         try {
             await this.instance.loadFont(url);
-            return {
-                familyName: this.deriveFontFamilyName(fallbackName),
-                characters: this.extractAvailableCharacters(),
-            };
+            return this.getFontMetadata(fallbackName);
         } finally {
             URL.revokeObjectURL(url);
         }
     }
 
-    getFontMetadata(fallbackName: string | null = null): { familyName: string | null; characters: string[] } {
-        return {
-            familyName: this.deriveFontFamilyName(fallbackName),
-            characters: this.extractAvailableCharacters(),
-        };
+    async getFontMetadata(fallbackName: string | null = null): Promise<FontMetadata> {
+        if (!this.instance) {
+            throw new Error('textmode is not initialized');
+        }
+
+        await this.waitForCoreReady();
+
+        for (let attempt = 0; attempt < FONT_METADATA_RETRY_COUNT; attempt += 1) {
+            const metadata = this.readFontMetadata(fallbackName);
+            if (metadata.characters.length > 0 || attempt === FONT_METADATA_RETRY_COUNT - 1) {
+                return metadata;
+            }
+
+            await this.sleep(FONT_METADATA_RETRY_DELAY_MS * (attempt + 1));
+        }
+
+        return this.readFontMetadata(fallbackName);
     }
 
     applyPlaybackCommand(command: PlaybackCommand): PlaybackStateSnapshot {
@@ -474,6 +491,24 @@ export class TextmodeManager implements ITextmodeManager {
         if (typeof redraw === 'function') {
             redraw.call(this.instance);
         }
+    }
+
+    private readFontMetadata(fallbackName: string | null = null): FontMetadata {
+        return {
+            familyName: this.deriveFontFamilyName(fallbackName),
+            characters: this.extractAvailableCharacters(),
+        };
+    }
+
+    private async waitForCoreReady(): Promise<void> {
+        const coreReady = (this.instance as TextmodifierWithExports | null)?._coreReady;
+        if (coreReady && typeof coreReady.then === 'function') {
+            await coreReady;
+        }
+    }
+
+    private async sleep(ms: number): Promise<void> {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, ms));
     }
 
     private extractAvailableCharacters(): string[] {

@@ -8,6 +8,7 @@ import {
 	isInitMessage,
 	isParentMessage,
 	type ExportMessage,
+	type GetFontMetadataMessage,
 	type LoadFontMessage,
 	type ParentToRunnerMessage,
 	type PlaybackMessage,
@@ -154,6 +155,10 @@ export class TextmodeEngine {
 			case 'LOAD_FONT':
 				this.ensureRuntimeInitialized();
 				void this.handleLoadFontMessage(msg);
+				break;
+			case 'GET_FONT_METADATA':
+				this.ensureRuntimeInitialized();
+				void this.handleGetFontMetadataMessage(msg);
 				break;
 			case 'PLAYBACK':
 				this.ensureRuntimeInitialized();
@@ -410,6 +415,25 @@ export class TextmodeEngine {
 
 			this.transport.send({
 				type: 'FONT_LOADED',
+				requestId: message.requestId,
+				familyName: metadata.familyName,
+				characters: metadata.characters,
+			});
+		} catch (error) {
+			this.transport.send({
+				type: 'FONT_ERROR',
+				requestId: message.requestId,
+				message: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async handleGetFontMetadataMessage(message: GetFontMetadataMessage): Promise<void> {
+		try {
+			const metadata = await this.textmode.getFontMetadata();
+
+			this.transport.send({
+				type: 'FONT_METADATA',
 				requestId: message.requestId,
 				familyName: metadata.familyName,
 				characters: metadata.characters,
