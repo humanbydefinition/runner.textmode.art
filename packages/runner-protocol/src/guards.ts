@@ -56,12 +56,8 @@ export function isRunnerMessage(msg: unknown): msg is RunnerToParentMessage {
 				isExportProgress(msg.progress)
 			);
 		case 'FONT_LOADED':
-			return (
-				typeof msg.requestId === 'string' &&
-				(msg.familyName === null || typeof msg.familyName === 'string') &&
-				Array.isArray(msg.characters) &&
-				msg.characters.every((entry) => typeof entry === 'string')
-			);
+		case 'FONT_METADATA':
+			return isFontMetadataPayload(msg);
 		case 'FONT_ERROR':
 			return typeof msg.requestId === 'string' && typeof msg.message === 'string';
 		case 'PLAYBACK_STATE':
@@ -104,6 +100,8 @@ export function isParentMessage(msg: unknown): msg is ParentToRunnerMessage {
 				isOptionalString(msg.mimeType) &&
 				msg.buffer instanceof ArrayBuffer
 			);
+		case 'GET_FONT_METADATA':
+			return typeof msg.requestId === 'string';
 		case 'PLAYBACK':
 			return (
 				isOptionalString(msg.requestId) &&
@@ -116,6 +114,15 @@ export function isParentMessage(msg: unknown): msg is ParentToRunnerMessage {
 		default:
 			return false;
 	}
+}
+
+function isFontMetadataPayload(msg: Record<string, unknown>): boolean {
+	return (
+		typeof msg.requestId === 'string' &&
+		(msg.familyName === null || typeof msg.familyName === 'string') &&
+		Array.isArray(msg.characters) &&
+		msg.characters.every((entry) => typeof entry === 'string')
+	);
 }
 
 /**

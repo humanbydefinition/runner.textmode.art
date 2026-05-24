@@ -27,6 +27,11 @@ export interface PlaybackStateSnapshot {
     fps?: number;
 }
 
+export interface FontMetadataSnapshot {
+    familyName: string | null;
+    characters: string[];
+}
+
 /**
  * Interface for textmode instance management
  */
@@ -53,6 +58,8 @@ export interface ITextmodeManager {
     getPlaybackState(): PlaybackStateSnapshot;
     /** Apply playback command */
     applyPlaybackCommand(command: PlaybackCommand): PlaybackStateSnapshot;
+    /** Current active font metadata */
+    getFontMetadata(fallbackName?: string | null): Promise<FontMetadataSnapshot>;
 }
 
 /**

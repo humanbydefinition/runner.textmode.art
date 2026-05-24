@@ -4,6 +4,7 @@ import {
 	type ExportResultMessage,
 	type FontErrorMessage,
 	type FontLoadedMessage,
+	type FontMetadataMessage,
 	type PlaybackStateMessage,
 	type PongMessage,
 	type ReadyMessage,
@@ -22,6 +23,7 @@ export interface RunnerMessageHandlers {
 	onExportProgress: (message: ExportProgressMessage) => void;
 	onExportResult: (message: ExportResultMessage) => void;
 	onFontLoaded: (message: FontLoadedMessage) => void;
+	onFontMetadata: (message: FontMetadataMessage) => void;
 	onFontError: (message: FontErrorMessage) => void;
 	onPlaybackState: (message: PlaybackStateMessage) => void;
 	onPong: (message: PongMessage) => void;
@@ -59,6 +61,9 @@ export function routeRunnerMessage(message: unknown, handlers: RunnerMessageHand
 			break;
 		case 'FONT_LOADED':
 			handlers.onFontLoaded(message);
+			break;
+		case 'FONT_METADATA':
+			handlers.onFontMetadata(message);
 			break;
 		case 'FONT_ERROR':
 			handlers.onFontError(message);

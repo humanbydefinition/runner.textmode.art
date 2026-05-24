@@ -74,6 +74,7 @@ describe('@textmode/runner-protocol', () => {
 				buffer: new ArrayBuffer(8),
 			})
 		).toBe(true);
+		expect(isParentMessage({ type: 'GET_FONT_METADATA', requestId: 'font_metadata_1' })).toBe(true);
 		expect(isParentMessage({ type: 'PLAYBACK', requestId: 'playback_1', action: 'seek', frame: 12 })).toBe(true);
 		expect(isParentMessage({ type: 'PING', nonce: 'heartbeat_1' })).toBe(true);
 	});
@@ -91,6 +92,7 @@ describe('@textmode/runner-protocol', () => {
 		expect(isParentMessage({ type: 'LOAD_FONT', requestId: 'font_1', fileName: 'Example.woff', buffer: {} })).toBe(
 			false
 		);
+		expect(isParentMessage({ type: 'GET_FONT_METADATA' })).toBe(false);
 	});
 
 	it('validates current runner responses', () => {
@@ -142,6 +144,14 @@ describe('@textmode/runner-protocol', () => {
 				characters: ['A'],
 			})
 		).toBe(true);
+		expect(
+			isRunnerMessage({
+				type: 'FONT_METADATA',
+				requestId: 'font_metadata_1',
+				familyName: 'UrsaFont',
+				characters: ['A', 'B'],
+			})
+		).toBe(true);
 		expect(isRunnerMessage({ type: 'FONT_ERROR', requestId: 'font_2', message: 'bad font' })).toBe(true);
 	});
 
@@ -161,6 +171,14 @@ describe('@textmode/runner-protocol', () => {
 			isRunnerMessage({
 				type: 'FONT_LOADED',
 				requestId: 'font_1',
+				familyName: 'Example',
+				characters: [65],
+			})
+		).toBe(false);
+		expect(
+			isRunnerMessage({
+				type: 'FONT_METADATA',
+				requestId: 'font_metadata_1',
 				familyName: 'Example',
 				characters: [65],
 			})
