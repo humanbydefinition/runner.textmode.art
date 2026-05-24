@@ -3,6 +3,7 @@ import {
 	type ExportMessage,
 	type ExportResultMessage,
 	type FontLoadedMessage,
+	type FontMetadataMessage,
 	type GifExportOptions,
 	type ImageExportOptions,
 	type InitMessage,
@@ -401,6 +402,23 @@ export class IframeTextmodeRuntime {
 	}
 
 	/**
+	 * Reads metadata for the runner's active font.
+	 *
+	 * @category Fonts
+	 */
+	async getFontMetadata(): Promise<FontLoadResult> {
+		const message = {
+			type: 'GET_FONT_METADATA',
+			requestId: this.createRequestId('font'),
+		} satisfies ParentToRunnerMessage;
+
+		return this.request<FontMetadataMessage>(message).then((result) => ({
+			familyName: result.familyName,
+			characters: result.characters,
+		}));
+	}
+
+	/**
 	 * Sends a playback command and resolves with the resulting playback state.
 	 *
 	 * @category Playback
@@ -465,6 +483,9 @@ export class IframeTextmodeRuntime {
 			},
 			onFontLoaded: (fontLoadedMessage) => {
 				this.pending.resolve(fontLoadedMessage.requestId, fontLoadedMessage);
+			},
+			onFontMetadata: (fontMetadataMessage) => {
+				this.pending.resolve(fontMetadataMessage.requestId, fontMetadataMessage);
 			},
 			onFontError: (fontErrorMessage) => {
 				this.pending.reject(fontErrorMessage.requestId, new Error(fontErrorMessage.message));

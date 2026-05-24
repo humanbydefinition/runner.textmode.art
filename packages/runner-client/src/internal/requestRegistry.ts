@@ -91,6 +91,7 @@ export function requestKindForMessage(type: ParentToRunnerMessage['type']): Requ
 		case 'EXPORT':
 			return 'export';
 		case 'LOAD_FONT':
+		case 'GET_FONT_METADATA':
 			return 'font';
 		case 'PLAYBACK':
 			return 'playback';

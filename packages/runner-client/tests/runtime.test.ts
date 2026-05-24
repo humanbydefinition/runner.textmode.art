@@ -257,6 +257,7 @@ describe('@textmode/runner-client', () => {
 		vi.advanceTimersByTime(1000);
 		await expect(timedOut).rejects.toThrow('runner request timed out: LOAD_FONT');
 		expect(timeoutHandler).toHaveBeenCalledTimes(1);
+		expect(requestKindForMessage('GET_FONT_METADATA')).toBe('font');
 		expect(requestKindForMessage('PLAYBACK')).toBe('playback');
 		expect(env.container.children).toEqual([]);
 	});
@@ -379,6 +380,26 @@ describe('@textmode/runner-client', () => {
 			characters: ['A'],
 		});
 		await expect(font).resolves.toEqual({ familyName: 'Example', characters: ['A'] });
+
+		const metadata = runtime.getFontMetadata();
+		const metadataMessage = env.channel.port1.sent.at(-1) as { requestId: string; type: string };
+		expect(metadataMessage).toMatchObject({ type: 'GET_FONT_METADATA' });
+		env.channel.port1.deliver({
+			type: 'FONT_METADATA',
+			requestId: metadataMessage.requestId,
+			familyName: 'UrsaFont',
+			characters: ['A', 'B'],
+		});
+		await expect(metadata).resolves.toEqual({ familyName: 'UrsaFont', characters: ['A', 'B'] });
+
+		const badMetadata = runtime.getFontMetadata();
+		const badMetadataMessage = env.channel.port1.sent.at(-1) as { requestId: string };
+		env.channel.port1.deliver({
+			type: 'FONT_ERROR',
+			requestId: badMetadataMessage.requestId,
+			message: 'font metadata unavailable',
+		});
+		await expect(badMetadata).rejects.toThrow('font metadata unavailable');
 
 		const badFont = runtime.loadFont({
 			name: 'Broken.woff',
