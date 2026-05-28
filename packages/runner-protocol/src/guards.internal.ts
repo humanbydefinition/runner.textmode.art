@@ -69,6 +69,7 @@ export function isPlaybackState(value: unknown): value is PlaybackState {
 		typeof value.isPlaying === 'boolean' &&
 		isFiniteNumber(value.frame) &&
 		isFiniteNumber(value.maxFrames) &&
+		(value.bounded === undefined || typeof value.bounded === 'boolean') &&
 		(value.fps === undefined || isFiniteNumber(value.fps))
 	);
 }

@@ -36,6 +36,7 @@ import { createRunnerIframe, focusElement, mountRunnerIframe } from './internal/
 import { routeRunnerMessage } from './internal/messageRouter';
 import { RequestRegistry, requestKindForMessage } from './internal/requestRegistry';
 import { assertSandboxOriginPolicy } from './internal/sandboxPolicy';
+import { createDocumentVisibilityApi, type PageVisibilityApi } from './internal/visibility';
 
 const getRuntimeErrorMessage = (error: unknown, fallback: string): string => {
 	if (error instanceof Error && error.message) {
@@ -60,8 +61,9 @@ export class IframeTextmodeRuntime {
 	private readonly requestTimeoutMs: number;
 	private readonly options: IframeTextmodeRuntimeOptions;
 	private readonly mountMode: IframeMountMode;
-	private readonly pending = new RequestRegistry();
+	private readonly pending: RequestRegistry;
 	private readonly heartbeat: HeartbeatController;
+	private readonly visibility: PageVisibilityApi;
 	private iframe: HTMLIFrameElement | null = null;
 	private channel: MessageChannel | null = null;
 	private port: MessagePort | null = null;
@@ -84,9 +86,12 @@ export class IframeTextmodeRuntime {
 		this.sandboxTokens = [...(options.sandboxTokens ?? DEFAULT_IFRAME_SANDBOX_TOKENS)];
 		this.handshakeTimeoutMs = options.handshakeTimeoutMs ?? 5000;
 		this.requestTimeoutMs = options.requestTimeoutMs ?? 12000;
+		this.visibility = createDocumentVisibilityApi();
+		this.pending = new RequestRegistry(undefined, this.visibility);
 		this.heartbeat = new HeartbeatController({
 			intervalMs: options.heartbeatIntervalMs ?? 2000,
 			timeoutMs: options.heartbeatTimeoutMs ?? 10000,
+			visibilityApi: this.visibility,
 			onPing: () => {
 				this.postMessage({
 					type: 'PING',
@@ -229,6 +234,7 @@ export class IframeTextmodeRuntime {
 
 		const code = this.lastRequestedCode;
 		this.setStatus('recovering');
+		this.forceDisposeFrameForReconnect();
 		const initialized = await this.init(this.container, this.settings ?? undefined);
 		if (initialized && code) {
 			void this.runCode(code);
@@ -458,8 +464,10 @@ export class IframeTextmodeRuntime {
 		routeRunnerMessage(message, {
 			onReady: (readyMessage) => this.handleReady(readyMessage),
 			onRunOk: (runOkMessage) => {
-				this.pending.resolve(runOkMessage.requestId, runOkMessage);
-				this.options.onRunOk?.(runOkMessage);
+				const resolved = this.pending.resolve(runOkMessage.requestId, runOkMessage);
+				if (!runOkMessage.requestId || resolved) {
+					this.options.onRunOk?.(runOkMessage);
+				}
 			},
 			onRunError: (runErrorMessage) => this.handleRunError(runErrorMessage),
 			onSynthError: (synthErrorMessage) => {
@@ -491,10 +499,15 @@ export class IframeTextmodeRuntime {
 				this.pending.reject(fontErrorMessage.requestId, new Error(fontErrorMessage.message));
 			},
 			onPlaybackState: (playbackStateMessage) => {
-				this.options.onPlaybackState?.(playbackStateMessage.state);
 				if (playbackStateMessage.requestId) {
-					this.pending.resolve(playbackStateMessage.requestId, playbackStateMessage);
+					const resolved = this.pending.resolve(playbackStateMessage.requestId, playbackStateMessage);
+					if (resolved) {
+						this.options.onPlaybackState?.(playbackStateMessage.state);
+					}
+					return;
 				}
+
+				this.options.onPlaybackState?.(playbackStateMessage.state);
 			},
 			onPong: () => {
 				this.heartbeat.markPong();
@@ -577,12 +590,17 @@ export class IframeTextmodeRuntime {
 			return Promise.resolve(undefined as T);
 		}
 
+		const kind = requestKindForMessage(message.type);
 		const promise = this.pending.register<T>({
 			requestId,
-			kind: requestKindForMessage(message.type),
+			kind,
 			messageType: message.type,
 			timeoutMs,
 			onTimeout: (error) => {
+				if (kind === 'run') {
+					return;
+				}
+
 				this.handleUnavailable(error.message);
 			},
 		});
@@ -615,6 +633,21 @@ export class IframeTextmodeRuntime {
 		const status: RunnerRuntimeStatus = reason.includes('heartbeat') ? 'hung' : 'unavailable';
 		this.setStatus(status, reason);
 		this.options.onUnavailable?.(reason, status);
+	}
+
+	private forceDisposeFrameForReconnect(): void {
+		if (this.port) {
+			try {
+				this.postMessage({ type: 'DISPOSE' });
+			} catch {
+				// The existing connection may already be unavailable.
+			}
+		}
+
+		this.heartbeat.stop();
+		this.pending.rejectAll(new Error('runner reconnecting'));
+		this.ready = false;
+		this.disposeFrame();
 	}
 
 	private validateReadyMessage(message: ReadyMessage): string | null {

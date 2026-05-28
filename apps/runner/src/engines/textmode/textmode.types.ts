@@ -24,6 +24,7 @@ export interface PlaybackStateSnapshot {
     isPlaying: boolean;
     frame: number;
     maxFrames: number;
+    bounded?: boolean;
     fps?: number;
 }
 

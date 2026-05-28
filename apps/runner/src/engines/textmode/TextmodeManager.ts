@@ -56,6 +56,7 @@ export class TextmodeManager implements ITextmodeManager {
     };
     private resizeToWindow = true;
     private maxFrames = 200;
+    private playbackBounded = false;
 
     /** Callback for synth dynamic parameter errors */
     private onSynthError?: (error: Error) => void;
@@ -393,6 +394,7 @@ export class TextmodeManager implements ITextmodeManager {
                 break;
             case 'setMaxFrames':
                 this.maxFrames = Math.max(1, Math.floor(command.maxFrames ?? this.maxFrames));
+                this.playbackBounded = true;
                 if (this.getCurrentFrame() >= this.maxFrames) {
                     this.setFrame(this.maxFrames - 1);
                 }
@@ -414,8 +416,9 @@ export class TextmodeManager implements ITextmodeManager {
 
         return {
             isPlaying: Boolean(instance?.isLooping?.()),
-            frame: Math.max(0, Math.min(frame, this.maxFrames - 1)),
+            frame: this.playbackBounded ? Math.max(0, Math.min(frame, this.maxFrames - 1)) : frame,
             maxFrames: this.maxFrames,
+            bounded: this.playbackBounded,
             fps,
         };
     }
@@ -481,7 +484,8 @@ export class TextmodeManager implements ITextmodeManager {
     private setFrame(targetFrame: number): void {
         if (!this.instance) return;
 
-        const boundedFrame = Math.max(0, Math.min(Math.floor(targetFrame), this.maxFrames - 1));
+        const requestedFrame = Math.max(0, Math.floor(targetFrame));
+        const boundedFrame = this.playbackBounded ? Math.min(requestedFrame, this.maxFrames - 1) : requestedFrame;
         this.instance.frameCount = Math.max(0, boundedFrame - 1);
         this.redraw();
     }
