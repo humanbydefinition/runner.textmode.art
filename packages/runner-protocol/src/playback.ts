@@ -17,6 +17,8 @@ export interface PlaybackState {
 	frame: number;
 	/** Maximum frame count used by playback controls. */
 	maxFrames: number;
+	/** Whether playback is constrained to the max frame range. */
+	bounded?: boolean;
 	/** Optional measured or configured frames per second. */
 	fps?: number;
 }
