@@ -19,6 +19,7 @@ import {
 } from '@textmode/runner-protocol';
 
 import { HandshakeHandler } from '@/core/transport/HandshakeHandler';
+import { shouldWrapPlaybackState } from './playback';
 
 /**
  * Concrete engine implementation for Textmode sketches.
@@ -298,7 +299,7 @@ export class TextmodeEngine {
 			this.isExecuting = false;
 			this.textmode.resume();
 			this.sendPlaybackState();
-			this.startPlaybackMonitor();
+			this.syncPlaybackMonitor();
 		}
 	}
 
@@ -461,7 +462,7 @@ export class TextmodeEngine {
 		});
 
 		if (state.isPlaying) {
-			this.startPlaybackMonitor();
+			this.syncPlaybackMonitor();
 		} else {
 			this.stopPlaybackMonitor();
 		}
@@ -483,13 +484,13 @@ export class TextmodeEngine {
 
 		const tick = (timestamp: number) => {
 			let state = this.textmode.getPlaybackState();
-			if (!state.isPlaying) {
+			if (!state.isPlaying || state.bounded !== true) {
 				this.stopPlaybackMonitor();
 				this.sendPlaybackState();
 				return;
 			}
 
-			if (state.frame >= state.maxFrames - 1) {
+			if (shouldWrapPlaybackState(state)) {
 				this.textmode.applyPlaybackCommand({ action: 'seek', frame: 0 });
 				state = this.textmode.getPlaybackState();
 			}
@@ -504,6 +505,16 @@ export class TextmodeEngine {
 		};
 
 		this.playbackMonitorId = requestAnimationFrame(tick);
+	}
+
+	private syncPlaybackMonitor(): void {
+		const state = this.textmode.getPlaybackState();
+		if (state.isPlaying && state.bounded === true) {
+			this.startPlaybackMonitor();
+			return;
+		}
+
+		this.stopPlaybackMonitor();
 	}
 
 	private stopPlaybackMonitor(): void {
