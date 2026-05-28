@@ -5,6 +5,8 @@ export interface FrameSchedulerOptions {
     isRendering: () => boolean;
     /** Callback to execute the code */
     onExecute: (code: string, isSoftReset: boolean, requestId?: string) => void | Promise<void>;
+    /** Fallback delay for browsers that pause requestAnimationFrame. */
+    fallbackDelayMs?: number;
 }
 
 /**
@@ -14,6 +16,9 @@ export class FrameScheduler implements IFrameScheduler {
     private pendingExecution: PendingExecution | null = null;
     private executionGeneration = 0;
     private options: FrameSchedulerOptions;
+    private firstRafId: number | null = null;
+    private secondRafId: number | null = null;
+    private fallbackTimeoutId: number | null = null;
 
     constructor(options: FrameSchedulerOptions) {
         this.options = options;
@@ -27,18 +32,40 @@ export class FrameScheduler implements IFrameScheduler {
         // Increment generation to invalidate any pending RAF chains
         const thisGeneration = ++this.executionGeneration;
         this.pendingExecution = execution;
+        this.clearScheduledCallbacks();
+
+        if (!this.options.isRendering()) {
+            this.processPending();
+            return;
+        }
+
+        this.scheduleBoundary(thisGeneration);
+    }
+
+    private scheduleBoundary(generation: number): void {
+        this.clearScheduledCallbacks();
 
         // First RAF: wait for current frame to complete its callback phase
-        requestAnimationFrame(() => {
-            if (thisGeneration !== this.executionGeneration) return;
+        this.firstRafId = requestAnimationFrame(() => {
+            this.firstRafId = null;
+            if (generation !== this.executionGeneration) return;
 
             // Second RAF: now we're at the very start of the next frame,
             // before textmode's render loop has been called
-            requestAnimationFrame(() => {
-                if (thisGeneration !== this.executionGeneration) return;
+            this.secondRafId = requestAnimationFrame(() => {
+                this.secondRafId = null;
+                this.clearFallbackTimeout();
+                if (generation !== this.executionGeneration) return;
                 this.processPending();
             });
         });
+
+        this.fallbackTimeoutId = window.setTimeout(() => {
+            this.fallbackTimeoutId = null;
+            this.clearAnimationFrames();
+            if (generation !== this.executionGeneration) return;
+            this.processPending();
+        }, this.options.fallbackDelayMs ?? 100);
     }
 
     /**
@@ -47,6 +74,7 @@ export class FrameScheduler implements IFrameScheduler {
     cancel(): void {
         this.executionGeneration++;
         this.pendingExecution = null;
+        this.clearScheduledCallbacks();
     }
 
     /**
@@ -58,12 +86,36 @@ export class FrameScheduler implements IFrameScheduler {
         // Double-check we're not mid-render
         if (this.options.isRendering()) {
             // Still rendering, try again next frame
-            requestAnimationFrame(() => this.processPending());
+            this.scheduleBoundary(this.executionGeneration);
             return;
         }
 
         const { code, isSoftReset, requestId } = this.pendingExecution;
         this.pendingExecution = null;
         this.options.onExecute(code, isSoftReset, requestId);
+    }
+
+    private clearScheduledCallbacks(): void {
+        this.clearAnimationFrames();
+        this.clearFallbackTimeout();
+    }
+
+    private clearAnimationFrames(): void {
+        if (this.firstRafId !== null) {
+            cancelAnimationFrame(this.firstRafId);
+            this.firstRafId = null;
+        }
+
+        if (this.secondRafId !== null) {
+            cancelAnimationFrame(this.secondRafId);
+            this.secondRafId = null;
+        }
+    }
+
+    private clearFallbackTimeout(): void {
+        if (this.fallbackTimeoutId !== null) {
+            window.clearTimeout(this.fallbackTimeoutId);
+            this.fallbackTimeoutId = null;
+        }
     }
 }
