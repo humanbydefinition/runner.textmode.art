@@ -14,10 +14,10 @@
     },
     "dependencies": {
         "@textmode/runner-protocol": "file:../../packages/runner-protocol",
-        "textmode.export.js": "^1.3.0",
-        "textmode.figlet.js": "^1.0.0",
-        "textmode.js": "^0.13.0",
-        "textmode.synth.js": "^1.6.0",
-        "textmode.filters.js": "^1.2.0"
+        "textmode.export.js": "^1.5.1",
+        "textmode.figlet.js": "^1.0.1",
+        "textmode.js": "^0.16.0",
+        "textmode.synth.js": "^1.6.1",
+        "textmode.filters.js": "^1.2.1"
     }
 }
