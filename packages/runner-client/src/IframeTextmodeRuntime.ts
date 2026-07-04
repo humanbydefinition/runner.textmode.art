@@ -1,29 +1,14 @@
 import {
 	isRunnerCapabilities,
-	type ExportMessage,
-	type ExportResultMessage,
-	type FontLoadedMessage,
-	type FontMetadataMessage,
-	type GifExportOptions,
-	type ImageExportOptions,
 	type InitMessage,
 	type ParentToRunnerMessage,
-	type PlaybackAction,
-	type PlaybackMessage,
-	type PlaybackState,
-	type PlaybackStateMessage,
 	type ReadyMessage,
 	type RunErrorMessage,
 	type RunnerCapabilities,
 	type RunnerToParentMessage,
 	type RunOkMessage,
-	type RuntimeSettings,
-	type SvgExportOptions,
-	type TxtExportOptions,
-	type WebmExportOptions,
 } from '@textmode/runner-protocol';
 import { RunnerRequestError } from './errors';
-import type { FontLoadResult } from './font';
 import {
 	DEFAULT_IFRAME_SANDBOX_TOKENS,
 	type IframeMountMode,
@@ -37,16 +22,6 @@ import { routeRunnerMessage } from './internal/messageRouter';
 import { RequestRegistry, requestKindForMessage } from './internal/requestRegistry';
 import { assertSandboxOriginPolicy } from './internal/sandboxPolicy';
 import { createDocumentVisibilityApi, type PageVisibilityApi } from './internal/visibility';
-
-const getRuntimeErrorMessage = (error: unknown, fallback: string): string => {
-	if (error instanceof Error && error.message) {
-		return error.message;
-	}
-	if (typeof error === 'string' && error.trim()) {
-		return error;
-	}
-	return fallback;
-};
 
 /**
  * Browser iframe runtime for communicating with the hosted textmode runner.
@@ -68,7 +43,6 @@ export class IframeTextmodeRuntime {
 	private channel: MessageChannel | null = null;
 	private port: MessagePort | null = null;
 	private container: HTMLElement | null = null;
-	private settings: RuntimeSettings | null = null;
 	private capabilities: RunnerCapabilities | null = null;
 	private ready = false;
 	private currentStatus: RunnerRuntimeStatus = 'idle';
@@ -153,19 +127,14 @@ export class IframeTextmodeRuntime {
 	 * Mounts the runner iframe and performs the current protocol handshake.
 	 *
 	 * @param container - DOM element that should contain the runner iframe.
-	 * @param settings - Optional fixed runtime settings to configure after ready.
 	 * @returns `true` when the runner is ready.
 	 * @category Runtime
 	 */
-	async init(container: HTMLElement, settings?: RuntimeSettings): Promise<boolean> {
+	async init(container: HTMLElement): Promise<boolean> {
 		this.container = container;
-		this.settings = settings ? { ...settings } : null;
 		this.assertSandboxOriginPolicy();
 
 		if (this.isReady && this.iframe?.isConnected) {
-			if (settings) {
-				await this.configure(settings);
-			}
 			return true;
 		}
 
@@ -235,7 +204,7 @@ export class IframeTextmodeRuntime {
 		const code = this.lastRequestedCode;
 		this.setStatus('recovering');
 		this.forceDisposeFrameForReconnect();
-		const initialized = await this.init(this.container, this.settings ?? undefined);
+		const initialized = await this.init(this.container);
 		if (initialized && code) {
 			void this.runCode(code);
 		}
@@ -262,44 +231,6 @@ export class IframeTextmodeRuntime {
 	}
 
 	/**
-	 * Configures complete fixed runtime settings.
-	 *
-	 * @category Runtime
-	 */
-	async configure(settings: RuntimeSettings): Promise<PlaybackState | null> {
-		this.settings = { ...settings };
-		const wasReady = this.ready;
-		this.setStatus('configuring');
-		return this.request<PlaybackStateMessage>({
-			type: 'CONFIGURE_RUNTIME',
-			requestId: this.createRequestId('settings'),
-			settings,
-		}).then((message) => {
-			if (wasReady) {
-				this.setStatus('ready');
-			}
-			return message.state;
-		});
-	}
-
-	/**
-	 * Applies a partial runtime settings update.
-	 *
-	 * @category Runtime
-	 */
-	async setSettings(settings: Partial<RuntimeSettings>): Promise<PlaybackState | null> {
-		this.settings = {
-			...(this.settings ?? (settings as RuntimeSettings)),
-			...settings,
-		} as RuntimeSettings;
-		return this.request<PlaybackStateMessage>({
-			type: 'SET_SETTINGS',
-			requestId: this.createRequestId('settings'),
-			settings,
-		}).then((message) => message.state);
-	}
-
-	/**
 	 * Executes code in the runner.
 	 *
 	 * @category Runtime
@@ -313,132 +244,6 @@ export class IframeTextmodeRuntime {
 
 		await this.request<RunOkMessage>(message);
 		return true;
-	}
-
-	/**
-	 * Exports the current runner output in any supported format.
-	 *
-	 * @category Exports
-	 */
-	async export(
-		format: ExportMessage['format'],
-		options?:
-			| ImageExportOptions
-			| SvgExportOptions
-			| TxtExportOptions
-			| GifExportOptions
-			| WebmExportOptions,
-		timeoutMs?: number
-	): Promise<ExportResultMessage> {
-		const message: ExportMessage = {
-			type: 'EXPORT',
-			requestId: this.createRequestId('export'),
-			format,
-			options,
-		};
-
-		return this.request<ExportResultMessage>(message, timeoutMs);
-	}
-
-	/**
-	 * Exports the current runner output as a raster image.
-	 *
-	 * @category Exports
-	 */
-	async exportImage(options: ImageExportOptions): Promise<ExportResultMessage> {
-		return this.export('image', options);
-	}
-
-	/**
-	 * Exports the current runner output as SVG.
-	 *
-	 * @category Exports
-	 */
-	async exportSvg(options: SvgExportOptions): Promise<ExportResultMessage> {
-		return this.export('svg', options);
-	}
-
-	/**
-	 * Exports the current runner output as plain text.
-	 *
-	 * @category Exports
-	 */
-	async exportTxt(options: TxtExportOptions): Promise<ExportResultMessage> {
-		return this.export('txt', options);
-	}
-
-	/**
-	 * Records an animated GIF export.
-	 *
-	 * @category Exports
-	 */
-	async exportGif(options: GifExportOptions): Promise<ExportResultMessage> {
-		return this.export('gif', options, Math.max(this.requestTimeoutMs, 120000));
-	}
-
-	/**
-	 * Records a WebM export.
-	 *
-	 * @category Exports
-	 */
-	async exportWebm(options: WebmExportOptions): Promise<ExportResultMessage> {
-		return this.export('webm', options, Math.max(this.requestTimeoutMs, 120000));
-	}
-
-	/**
-	 * Loads a font file into the runner.
-	 *
-	 * @category Fonts
-	 */
-	async loadFont(file: File): Promise<FontLoadResult> {
-		const requestId = this.createRequestId('font');
-		const buffer = await file.arrayBuffer();
-		const message = {
-			type: 'LOAD_FONT',
-			requestId,
-			fileName: file.name,
-			mimeType: file.type || undefined,
-			buffer,
-		} satisfies ParentToRunnerMessage;
-
-		return this.request<FontLoadedMessage>(message, undefined, [buffer]).then((result) => ({
-			familyName: result.familyName,
-			characters: result.characters,
-		}));
-	}
-
-	/**
-	 * Reads metadata for the runner's active font.
-	 *
-	 * @category Fonts
-	 */
-	async getFontMetadata(): Promise<FontLoadResult> {
-		const message = {
-			type: 'GET_FONT_METADATA',
-			requestId: this.createRequestId('font'),
-		} satisfies ParentToRunnerMessage;
-
-		return this.request<FontMetadataMessage>(message).then((result) => ({
-			familyName: result.familyName,
-			characters: result.characters,
-		}));
-	}
-
-	/**
-	 * Sends a playback command and resolves with the resulting playback state.
-	 *
-	 * @category Playback
-	 */
-	async playback(action: PlaybackAction, options: { frame?: number; maxFrames?: number } = {}): Promise<PlaybackState> {
-		const message: PlaybackMessage = {
-			type: 'PLAYBACK',
-			requestId: this.createRequestId('playback'),
-			action,
-			frame: options.frame,
-			maxFrames: options.maxFrames,
-		};
-
-		return this.request<PlaybackStateMessage>(message).then((result) => result.state);
 	}
 
 	private connectPort(): void {
@@ -479,36 +284,6 @@ export class IframeTextmodeRuntime {
 			onUserInteraction: () => {
 				this.options.onUserInteraction?.();
 			},
-			onExportProgress: (exportProgressMessage) => {
-				this.options.onExportProgress?.(
-					exportProgressMessage.requestId,
-					exportProgressMessage.format,
-					exportProgressMessage.progress
-				);
-			},
-			onExportResult: (exportResultMessage) => {
-				this.pending.resolve(exportResultMessage.requestId, exportResultMessage);
-			},
-			onFontLoaded: (fontLoadedMessage) => {
-				this.pending.resolve(fontLoadedMessage.requestId, fontLoadedMessage);
-			},
-			onFontMetadata: (fontMetadataMessage) => {
-				this.pending.resolve(fontMetadataMessage.requestId, fontMetadataMessage);
-			},
-			onFontError: (fontErrorMessage) => {
-				this.pending.reject(fontErrorMessage.requestId, new Error(fontErrorMessage.message));
-			},
-			onPlaybackState: (playbackStateMessage) => {
-				if (playbackStateMessage.requestId) {
-					const resolved = this.pending.resolve(playbackStateMessage.requestId, playbackStateMessage);
-					if (resolved) {
-						this.options.onPlaybackState?.(playbackStateMessage.state);
-					}
-					return;
-				}
-
-				this.options.onPlaybackState?.(playbackStateMessage.state);
-			},
 			onPong: () => {
 				this.heartbeat.markPong();
 			},
@@ -530,23 +305,7 @@ export class IframeTextmodeRuntime {
 		}
 
 		this.options.onConnected?.();
-
-		const settings = this.settings;
-		if (settings) {
-			void this.configure(settings)
-				.then(() => {
-					this.markReady();
-				})
-				.catch((error) => {
-					this.ready = false;
-					this.setStatus('unavailable', getRuntimeErrorMessage(error, 'runner configuration failed'));
-					this.readyRejecter?.(error);
-					this.readyResolver = null;
-					this.readyRejecter = null;
-				});
-		} else {
-			this.markReady();
-		}
+		this.markReady();
 	}
 
 	private markReady(): void {
@@ -575,18 +334,14 @@ export class IframeTextmodeRuntime {
 		});
 	}
 
-	private request<T>(
-		message: ParentToRunnerMessage,
-		timeoutMs = this.requestTimeoutMs,
-		transfer?: Transferable[]
-	): Promise<T> {
-		if (!this.port || (!this.ready && message.type !== 'CONFIGURE_RUNTIME')) {
+	private request<T>(message: ParentToRunnerMessage, timeoutMs = this.requestTimeoutMs): Promise<T> {
+		if (!this.port || !this.ready) {
 			return Promise.reject(new Error('runner is not ready'));
 		}
 
 		const requestId = 'requestId' in message ? message.requestId : undefined;
 		if (!requestId) {
-			this.postMessage(message, transfer);
+			this.postMessage(message);
 			return Promise.resolve(undefined as T);
 		}
 
@@ -605,20 +360,16 @@ export class IframeTextmodeRuntime {
 			},
 		});
 
-		this.postMessage(message, transfer);
+		this.postMessage(message);
 		return promise;
 	}
 
-	private postMessage(message: ParentToRunnerMessage, transfer?: Transferable[]): void {
+	private postMessage(message: ParentToRunnerMessage): void {
 		if (!this.port) {
 			throw new Error('runner port is not connected');
 		}
 
-		if (transfer && transfer.length > 0) {
-			this.port.postMessage(message, transfer);
-		} else {
-			this.port.postMessage(message);
-		}
+		this.port.postMessage(message);
 	}
 
 	private handleUnavailable(reason: string): void {
@@ -630,7 +381,7 @@ export class IframeTextmodeRuntime {
 		this.readyResolver = null;
 		this.readyRejecter = null;
 		this.disposeFrame();
-		const status: RunnerRuntimeStatus = reason.includes('heartbeat') ? 'hung' : 'unavailable';
+		const status: RunnerRuntimeStatus = reason === 'runner heartbeat timed out' ? 'hung' : 'unavailable';
 		this.setStatus(status, reason);
 		this.options.onUnavailable?.(reason, status);
 	}
@@ -657,8 +408,8 @@ export class IframeTextmodeRuntime {
 			return 'runner did not advertise a valid current capability set';
 		}
 
-		if (!capabilities.runtimeConfig) {
-			return 'runner does not support runtime configuration';
+		if (!capabilities.heartbeat) {
+			return 'runner does not support heartbeat monitoring';
 		}
 
 		return null;

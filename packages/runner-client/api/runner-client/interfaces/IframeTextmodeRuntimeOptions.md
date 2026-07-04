@@ -20,14 +20,12 @@ Options for [IframeTextmodeRuntime](../classes/IframeTextmodeRuntime.md).
 | <a id="property-requesttimeoutms"></a> `requestTimeoutMs?` | `number` | Default timeout for request/response runner messages. |
 | <a id="property-heartbeatintervalms"></a> `heartbeatIntervalMs?` | `number` | Interval between heartbeat pings. |
 | <a id="property-heartbeattimeoutms"></a> `heartbeatTimeoutMs?` | `number` | Maximum time without a heartbeat pong before the runner is marked hung. |
-| <a id="property-onready"></a> `onReady?` | (`capabilities`) => `void` | Called after the runner is ready and optional runtime configuration succeeds. |
+| <a id="property-onready"></a> `onReady?` | (`capabilities`) => `void` | Called after the runner is ready. |
 | <a id="property-onrunok"></a> `onRunOk?` | (`message`) => `void` | Called when code execution succeeds. |
 | <a id="property-onrunerror"></a> `onRunError?` | (`error`) => `void` | Called for non-request-scoped runner execution errors. |
 | <a id="property-onsyntherror"></a> `onSynthError?` | (`message`) => `void` | Called when the runner reports a synth parameter error. |
 | <a id="property-ontoggleui"></a> `onToggleUI?` | () => `void` | Called when the runner requests host UI visibility changes. |
 | <a id="property-onuserinteraction"></a> `onUserInteraction?` | () => `void` | Called when the runner reports user interaction. |
-| <a id="property-onexportprogress"></a> `onExportProgress?` | (`requestId`, `format`, `progress`) => `void` | Called as multi-frame exports report progress. |
-| <a id="property-onplaybackstate"></a> `onPlaybackState?` | (`state`) => `void` | Called whenever the runner reports playback state. |
 | <a id="property-onunavailable"></a> `onUnavailable?` | (`reason`, `status`) => `void` | Called when the runner becomes unavailable or hung. |
 | <a id="property-onconnected"></a> `onConnected?` | () => `void` | Called after the MessagePort connection is established. |
 | <a id="property-onstatuschange"></a> `onStatusChange?` | (`status`, `reason?`) => `void` | Called whenever runtime lifecycle status changes. |

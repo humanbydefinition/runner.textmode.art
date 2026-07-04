@@ -1,7 +1,7 @@
 import type { ParentToRunnerMessage } from '@textmode/runner-protocol';
 import { createDocumentVisibilityApi, isPageVisible, type PageVisibilityApi } from './visibility';
 
-export type RequestKind = 'run' | 'export' | 'font' | 'playback' | 'settings';
+export type RequestKind = 'run' | 'lifecycle';
 
 export interface RequestTimerApi {
 	setTimeout: (handler: () => void, timeoutMs: number) => number;
@@ -148,18 +148,9 @@ export function requestKindForMessage(type: ParentToRunnerMessage['type']): Requ
 		case 'RUN_CODE':
 		case 'SOFT_RESET':
 			return 'run';
-		case 'EXPORT':
-			return 'export';
-		case 'LOAD_FONT':
-		case 'GET_FONT_METADATA':
-			return 'font';
-		case 'PLAYBACK':
-			return 'playback';
-		case 'CONFIGURE_RUNTIME':
-		case 'SET_SETTINGS':
 		case 'PING':
 		case 'DISPOSE':
-			return 'settings';
+			return 'lifecycle';
 	}
 }
 

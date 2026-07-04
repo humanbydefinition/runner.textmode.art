@@ -4,9 +4,8 @@ Browser iframe runtime client for the hosted textmode runner.
 
 This package gives any browser host app a typed runtime API for mounting the
 runner iframe, performing the current generic protocol handshake, routing
-request/response messages, monitoring heartbeat status, loading fonts,
-controlling playback, running code, exporting output, reconnecting, and
-disposing the transport.
+request/response messages, monitoring heartbeat status, running code,
+soft-resetting sketches, reconnecting, and disposing the transport.
 
 It does not execute textmode.js sketches directly. It controls a runner app at
 the `runnerUrl` you provide.
@@ -40,17 +39,9 @@ const runtime = new IframeTextmodeRuntime({
 	onStatusChange(status: RunnerRuntimeStatus, reason) {
 		console.info('runner status changed', status, reason);
 	},
-	onExportProgress(requestId, format, progress) {
-		console.info('export progress', requestId, format, progress);
-	},
 });
 
-await runtime.init(container, {
-	width: 640,
-	height: 640,
-	fontSize: 16,
-	frameRate: 60,
-});
+await runtime.init(container);
 
 try {
 	await runtime.runCode(`
@@ -64,12 +55,7 @@ try {
 	}
 }
 
-const image = await runtime.export('image', {
-	format: 'png',
-	scale: 2,
-});
-
-console.info(image.filename, image.mimeType, image.blob);
+await runtime.runCode('t.frameCount = 0;', { softReset: true });
 runtime.dispose();
 ```
 
@@ -91,7 +77,6 @@ The main exports are:
 - `RunnerRuntimeStatus`
 - `RunnerExecutionError`
 - `RunnerRequestError`
-- `FontLoadResult`
 - `IframeTextmodeRuntimeOptions`
 - `IframeMountMode`
 - `IframeSandboxToken`
@@ -102,9 +87,9 @@ The main exports are:
 Typical host apps follow this lifecycle:
 
 1. Create an `IframeTextmodeRuntime` with a trusted `runnerUrl`.
-2. Call `init(container, settings)` from a browser context.
-3. Use `runCode`, `configure`, `setSettings`, `export`, `loadFont`, and
-   `playback` as needed.
+2. Call `init(container)` from a browser context.
+3. Use `runCode` for normal execution and `runCode(code, { softReset: true })`
+   when the host should reset sketch time before rerunning code.
 4. Call `reconnect` after a recoverable runner failure.
 5. Call `dispose` when the host view is unmounted.
 
@@ -118,8 +103,9 @@ The default iframe sandbox tokens are:
 ['allow-scripts', 'allow-same-origin']
 ```
 
-`allow-downloads` is not included by default. Export downloads should be
-initiated by the host app after it receives an export result from the runner.
+`allow-downloads` is not included by default. Sketches can use the installed
+`textmode.export.js` helpers inside the sandboxed runtime, but the host client
+does not expose a parent-controlled export channel.
 
 The runtime refuses to start a runner that combines `allow-scripts` and
 `allow-same-origin` on the same origin as the parent page.
