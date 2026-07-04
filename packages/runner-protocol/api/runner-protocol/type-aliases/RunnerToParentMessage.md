@@ -15,11 +15,6 @@ type RunnerToParentMessage =
   | SynthErrorMessage
   | ToggleUIMessage
   | UserInteractionMessage
-  | ExportResultMessage
-  | ExportProgressMessage
-  | FontLoadedMessage
-  | FontErrorMessage
-  | PlaybackStateMessage
   | PongMessage;
 ```
 

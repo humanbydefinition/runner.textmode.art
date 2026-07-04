@@ -12,11 +12,6 @@ type ParentToRunnerMessage =
   | RunCodeMessage
   | SoftResetMessage
   | DisposeMessage
-  | ConfigureRuntimeMessage
-  | SetSettingsMessage
-  | ExportMessage
-  | LoadFontMessage
-  | PlaybackMessage
   | PingMessage;
 ```
 

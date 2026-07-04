@@ -81,12 +81,10 @@ class FakeContainer {
 class FakeMessagePort {
 	onmessage: ((event: MessageEvent<RunnerToParentMessage>) => void) | null = null;
 	readonly sent: unknown[] = [];
-	readonly sentTransfers: unknown[][] = [];
 	readonly start = vi.fn();
 	readonly close = vi.fn();
-	readonly postMessage = vi.fn((message: unknown, transfer?: unknown[]) => {
+	readonly postMessage = vi.fn((message: unknown) => {
 		this.sent.push(message);
-		this.sentTransfers.push(transfer ?? []);
 	});
 
 	deliver(message: RunnerToParentMessage | unknown): void {
@@ -223,7 +221,7 @@ describe('@textmode/runner-client', () => {
 	});
 
 	it('tracks request resolve, reject, timeout, and message kind', async () => {
-		const env = installFakeBrowser();
+		installFakeBrowser();
 		const registry = new RequestRegistry();
 		const timeoutHandler = vi.fn();
 
@@ -238,28 +236,29 @@ describe('@textmode/runner-client', () => {
 		await expect(resolved).resolves.toBe('ok');
 
 		const rejected = registry.register<string>({
-			requestId: 'export_1',
-			kind: 'export',
-			messageType: 'EXPORT',
+			requestId: 'run_2',
+			kind: 'run',
+			messageType: 'SOFT_RESET',
 			timeoutMs: 1000,
 			onTimeout: timeoutHandler,
 		});
-		expect(registry.reject('export_1', new Error('failed'))).toBe(true);
+		expect(registry.reject('run_2', new Error('failed'))).toBe(true);
 		await expect(rejected).rejects.toThrow('failed');
 
 		const timedOut = registry.register<string>({
-			requestId: 'font_1',
-			kind: 'font',
-			messageType: 'LOAD_FONT',
+			requestId: 'run_3',
+			kind: 'run',
+			messageType: 'RUN_CODE',
 			timeoutMs: 1000,
 			onTimeout: timeoutHandler,
 		});
 		vi.advanceTimersByTime(1000);
-		await expect(timedOut).rejects.toThrow('runner request timed out: LOAD_FONT');
+		await expect(timedOut).rejects.toThrow('runner request timed out: RUN_CODE');
 		expect(timeoutHandler).toHaveBeenCalledTimes(1);
-		expect(requestKindForMessage('GET_FONT_METADATA')).toBe('font');
-		expect(requestKindForMessage('PLAYBACK')).toBe('playback');
-		expect(env.container.children).toEqual([]);
+		expect(requestKindForMessage('RUN_CODE')).toBe('run');
+		expect(requestKindForMessage('SOFT_RESET')).toBe('run');
+		expect(requestKindForMessage('PING')).toBe('lifecycle');
+		expect(requestKindForMessage('DISPOSE')).toBe('lifecycle');
 	});
 
 	it('sends the current INIT shape during handshake', async () => {
@@ -279,6 +278,28 @@ describe('@textmode/runner-client', () => {
 
 		env.channel.port1.deliver({ type: 'READY', capabilities });
 		await expect(readyPromise).resolves.toBe(true);
+		runtime.dispose();
+	});
+
+	it('rejects a pending handshake when init is superseded', async () => {
+		const env = installFakeBrowser();
+		const runtime = new IframeTextmodeRuntime({
+			runnerUrl: 'https://runner.textmode.art/',
+		});
+
+		const firstReady = runtime.init(env.container as unknown as HTMLElement);
+		const firstFrame = env.iframe;
+		const firstRejection = expect(firstReady).rejects.toThrow('runner initialization superseded');
+
+		const secondReady = runtime.init(env.container as unknown as HTMLElement);
+		await firstRejection;
+
+		firstFrame.dispatch('load');
+		expect(firstFrame.contentWindow.postMessage).not.toHaveBeenCalled();
+
+		env.iframe.dispatch('load');
+		env.channel.port1.deliver({ type: 'READY', capabilities });
+		await expect(secondReady).resolves.toBe(true);
 		runtime.dispose();
 	});
 
@@ -305,17 +326,16 @@ describe('@textmode/runner-client', () => {
 		env.channel.port1.deliver({
 			type: 'READY',
 			capabilities: {
-				...capabilities,
-				runtimeConfig: false,
+				heartbeat: false,
 			},
 		});
 
-		await expect(readyPromise).rejects.toThrow('runner does not support runtime configuration');
+		await expect(readyPromise).rejects.toThrow('runner does not support heartbeat monitoring');
 		expect(runtime.status).toBe('unavailable');
-		expect(onUnavailable).toHaveBeenCalledWith('runner does not support runtime configuration', 'unavailable');
+		expect(onUnavailable).toHaveBeenCalledWith('runner does not support heartbeat monitoring', 'unavailable');
 	});
 
-	it('routes run success and request-scoped run errors', async () => {
+	it('routes run success, soft reset success, and request-scoped run errors', async () => {
 		const { runtime, env } = await connectRuntime();
 
 		const ok = runtime.runCode('t.draw(() => {})');
@@ -323,6 +343,12 @@ describe('@textmode/runner-client', () => {
 		expect(runMessage).toMatchObject({ type: 'RUN_CODE', code: 't.draw(() => {})' });
 		env.channel.port1.deliver({ type: 'RUN_OK', timestamp: Date.now(), requestId: runMessage.requestId });
 		await expect(ok).resolves.toBe(true);
+
+		const softReset = runtime.runCode('t.draw(() => {})', { softReset: true });
+		const softResetMessage = env.channel.port1.sent.at(-1) as { requestId: string; type: string };
+		expect(softResetMessage).toMatchObject({ type: 'SOFT_RESET', code: 't.draw(() => {})' });
+		env.channel.port1.deliver({ type: 'RUN_OK', timestamp: Date.now(), requestId: softResetMessage.requestId });
+		await expect(softReset).resolves.toBe(true);
 
 		const failed = runtime.runCode('bad code');
 		const failedMessage = env.channel.port1.sent.at(-1) as { requestId: string };
@@ -338,92 +364,19 @@ describe('@textmode/runner-client', () => {
 		runtime.dispose();
 	});
 
-	it('routes export progress/result, font load, playback state, and pongs', async () => {
-		const onExportProgress = vi.fn();
-		const onPlaybackState = vi.fn();
-		const { runtime, env } = await connectRuntime({ onExportProgress, onPlaybackState });
+	it('routes runner callbacks and heartbeat pongs', async () => {
+		const onSynthError = vi.fn();
+		const onToggleUI = vi.fn();
+		const onUserInteraction = vi.fn();
+		const { runtime, env } = await connectRuntime({ onSynthError, onToggleUI, onUserInteraction });
 
-		const gif = runtime.exportGif({ frameCount: 2 });
-		const gifMessage = env.channel.port1.sent.at(-1) as { requestId: string };
-		env.channel.port1.deliver({
-			type: 'EXPORT_PROGRESS',
-			requestId: gifMessage.requestId,
-			format: 'gif',
-			progress: { state: 'recording', frameIndex: 1, totalFrames: 2 },
-		});
-		env.channel.port1.deliver({
-			type: 'EXPORT_RESULT',
-			requestId: gifMessage.requestId,
-			format: 'gif',
-			mimeType: 'image/gif',
-		});
-		await expect(gif).resolves.toMatchObject({ format: 'gif' });
-		expect(onExportProgress).toHaveBeenCalledWith(gifMessage.requestId, 'gif', {
-			state: 'recording',
-			frameIndex: 1,
-			totalFrames: 2,
-		});
+		env.channel.port1.deliver({ type: 'SYNTH_ERROR', message: 'bad uniform' });
+		env.channel.port1.deliver({ type: 'TOGGLE_UI' });
+		env.channel.port1.deliver({ type: 'USER_INTERACTION' });
 
-		const buffer = new ArrayBuffer(8);
-		const font = runtime.loadFont({
-			name: 'Example.woff',
-			type: 'font/woff',
-			arrayBuffer: async () => buffer,
-		} as File);
-		await Promise.resolve();
-		const fontMessage = env.channel.port1.sent.at(-1) as { requestId: string };
-		expect(env.channel.port1.sentTransfers.at(-1)).toEqual([buffer]);
-		env.channel.port1.deliver({
-			type: 'FONT_LOADED',
-			requestId: fontMessage.requestId,
-			familyName: 'Example',
-			characters: ['A'],
-		});
-		await expect(font).resolves.toEqual({ familyName: 'Example', characters: ['A'] });
-
-		const metadata = runtime.getFontMetadata();
-		const metadataMessage = env.channel.port1.sent.at(-1) as { requestId: string; type: string };
-		expect(metadataMessage).toMatchObject({ type: 'GET_FONT_METADATA' });
-		env.channel.port1.deliver({
-			type: 'FONT_METADATA',
-			requestId: metadataMessage.requestId,
-			familyName: 'UrsaFont',
-			characters: ['A', 'B'],
-		});
-		await expect(metadata).resolves.toEqual({ familyName: 'UrsaFont', characters: ['A', 'B'] });
-
-		const badMetadata = runtime.getFontMetadata();
-		const badMetadataMessage = env.channel.port1.sent.at(-1) as { requestId: string };
-		env.channel.port1.deliver({
-			type: 'FONT_ERROR',
-			requestId: badMetadataMessage.requestId,
-			message: 'font metadata unavailable',
-		});
-		await expect(badMetadata).rejects.toThrow('font metadata unavailable');
-
-		const badFont = runtime.loadFont({
-			name: 'Broken.woff',
-			type: 'font/woff',
-			arrayBuffer: async () => new ArrayBuffer(4),
-		} as File);
-		await Promise.resolve();
-		const badFontMessage = env.channel.port1.sent.at(-1) as { requestId: string };
-		env.channel.port1.deliver({
-			type: 'FONT_ERROR',
-			requestId: badFontMessage.requestId,
-			message: 'font rejected',
-		});
-		await expect(badFont).rejects.toThrow('font rejected');
-
-		const playback = runtime.playback('seek', { frame: 12 });
-		const playbackMessage = env.channel.port1.sent.at(-1) as { requestId: string };
-		env.channel.port1.deliver({
-			type: 'PLAYBACK_STATE',
-			requestId: playbackMessage.requestId,
-			state: { isPlaying: false, frame: 12, maxFrames: 120 },
-		});
-		await expect(playback).resolves.toEqual({ isPlaying: false, frame: 12, maxFrames: 120 });
-		expect(onPlaybackState).toHaveBeenCalledWith({ isPlaying: false, frame: 12, maxFrames: 120 });
+		expect(onSynthError).toHaveBeenCalledWith('bad uniform');
+		expect(onToggleUI).toHaveBeenCalledTimes(1);
+		expect(onUserInteraction).toHaveBeenCalledTimes(1);
 
 		vi.advanceTimersByTime(1000);
 		expect((env.channel.port1.sent.at(-1) as { type: string }).type).toBe('PING');

@@ -12,7 +12,7 @@ describe('@textmode/runner-protocol', () => {
 		expect(isInitMessage({ type: 'INIT' })).toBe(true);
 	});
 
-	it('rejects retired runtime protocol version fields', () => {
+	it('rejects retired init and capability fields', () => {
 		expect(isInitMessage({ type: 'INIT', v: 1 })).toBe(false);
 		expect(isInitMessage({ type: 'INIT', client: 'editor' })).toBe(false);
 		expect(isInitMessage({ type: 'INIT', client: 'synth' })).toBe(false);
@@ -37,34 +37,61 @@ describe('@textmode/runner-protocol', () => {
 		).toBe(false);
 	});
 
-	it('validates the current ready capabilities', () => {
+	it('validates the reduced ready capabilities', () => {
 		const capabilities = createRunnerCapabilities();
 
 		expect(isRunnerMessage({ type: 'READY', capabilities })).toBe(true);
-		expect(capabilities).toMatchObject({
-			runtimeConfig: true,
-			exports: ['image', 'svg', 'txt', 'gif', 'webm'],
-			fonts: true,
-			playback: true,
+		expect(capabilities).toEqual({
 			heartbeat: true,
 		});
+	});
+
+	it('rejects removed editor capabilities', () => {
+		expect(
+			isRunnerCapabilities({
+				heartbeat: true,
+				runtimeConfig: true,
+			})
+		).toBe(false);
+		expect(
+			isRunnerCapabilities({
+				heartbeat: true,
+				exports: ['svg'],
+			})
+		).toBe(false);
+		expect(
+			isRunnerCapabilities({
+				heartbeat: true,
+				fonts: true,
+			})
+		).toBe(false);
+		expect(
+			isRunnerCapabilities({
+				heartbeat: true,
+				playback: true,
+			})
+		).toBe(false);
 	});
 
 	it('validates current parent messages', () => {
 		expect(isParentMessage({ type: 'RUN_CODE', requestId: 'run_1', code: 't.draw(() => {})' })).toBe(true);
 		expect(isParentMessage({ type: 'SOFT_RESET', requestId: 'run_2', code: 't.draw(() => {})' })).toBe(true);
 		expect(isParentMessage({ type: 'DISPOSE' })).toBe(true);
+		expect(isParentMessage({ type: 'PING', nonce: 'heartbeat_1' })).toBe(true);
+	});
+
+	it('rejects removed editor parent messages', () => {
 		expect(
 			isParentMessage({
 				type: 'CONFIGURE_RUNTIME',
 				requestId: 'settings_1',
 				settings: { width: 640, height: 640, fontSize: 16, frameRate: 60 },
 			})
-		).toBe(true);
+		).toBe(false);
 		expect(isParentMessage({ type: 'SET_SETTINGS', requestId: 'settings_2', settings: { frameRate: 30 } })).toBe(
-			true
+			false
 		);
-		expect(isParentMessage({ type: 'EXPORT', requestId: 'export_1', format: 'svg', options: {} })).toBe(true);
+		expect(isParentMessage({ type: 'EXPORT', requestId: 'export_1', format: 'svg', options: {} })).toBe(false);
 		expect(
 			isParentMessage({
 				type: 'LOAD_FONT',
@@ -73,26 +100,15 @@ describe('@textmode/runner-protocol', () => {
 				mimeType: 'font/woff',
 				buffer: new ArrayBuffer(8),
 			})
-		).toBe(true);
-		expect(isParentMessage({ type: 'GET_FONT_METADATA', requestId: 'font_metadata_1' })).toBe(true);
-		expect(isParentMessage({ type: 'PLAYBACK', requestId: 'playback_1', action: 'seek', frame: 12 })).toBe(true);
-		expect(isParentMessage({ type: 'PING', nonce: 'heartbeat_1' })).toBe(true);
+		).toBe(false);
+		expect(isParentMessage({ type: 'GET_FONT_METADATA', requestId: 'font_metadata_1' })).toBe(false);
+		expect(isParentMessage({ type: 'PLAYBACK', requestId: 'playback_1', action: 'seek', frame: 12 })).toBe(false);
 	});
 
 	it('rejects malformed parent payloads', () => {
 		expect(isParentMessage({ type: 'RUN_CODE' })).toBe(false);
-		expect(
-			isParentMessage({
-				type: 'CONFIGURE_RUNTIME',
-				requestId: 'settings_1',
-				settings: { width: 0, height: 640, fontSize: 16, frameRate: 60 },
-			})
-		).toBe(false);
-		expect(isParentMessage({ type: 'EXPORT', requestId: 'export_1', format: 'pdf' })).toBe(false);
-		expect(isParentMessage({ type: 'LOAD_FONT', requestId: 'font_1', fileName: 'Example.woff', buffer: {} })).toBe(
-			false
-		);
-		expect(isParentMessage({ type: 'GET_FONT_METADATA' })).toBe(false);
+		expect(isParentMessage({ type: 'SOFT_RESET', code: 42 })).toBe(false);
+		expect(isParentMessage({ type: 'PING', nonce: 123 })).toBe(false);
 	});
 
 	it('validates current runner responses', () => {
@@ -110,60 +126,16 @@ describe('@textmode/runner-protocol', () => {
 		expect(isRunnerMessage({ type: 'SYNTH_ERROR', message: 'bad uniform', uniformName: 'uTime' })).toBe(true);
 		expect(isRunnerMessage({ type: 'TOGGLE_UI' })).toBe(true);
 		expect(isRunnerMessage({ type: 'USER_INTERACTION' })).toBe(true);
-		expect(
-			isRunnerMessage({
-				type: 'EXPORT_RESULT',
-				requestId: 'export_1',
-				format: 'svg',
-				text: '<svg />',
-				filename: 'sketch.svg',
-				mimeType: 'image/svg+xml',
-			})
-		).toBe(true);
-		expect(
-			isRunnerMessage({
-				type: 'PLAYBACK_STATE',
-				requestId: 'playback_1',
-				state: { isPlaying: false, frame: 0, maxFrames: 200 },
-			})
-		).toBe(true);
 		expect(isRunnerMessage({ type: 'PONG', nonce: 'heartbeat_1', timestamp: Date.now() })).toBe(true);
+	});
+
+	it('rejects removed editor runner responses', () => {
+		expect(isRunnerMessage({ type: 'EXPORT_RESULT', requestId: 'export_1', format: 'svg' })).toBe(false);
 		expect(
 			isRunnerMessage({
 				type: 'EXPORT_PROGRESS',
 				requestId: 'export_1',
 				format: 'gif',
-				progress: { state: 'recording', frameIndex: 1, totalFrames: 2 },
-			})
-		).toBe(true);
-		expect(
-			isRunnerMessage({
-				type: 'FONT_LOADED',
-				requestId: 'font_1',
-				familyName: 'Example',
-				characters: ['A'],
-			})
-		).toBe(true);
-		expect(
-			isRunnerMessage({
-				type: 'FONT_METADATA',
-				requestId: 'font_metadata_1',
-				familyName: 'UrsaFont',
-				characters: ['A', 'B'],
-			})
-		).toBe(true);
-		expect(isRunnerMessage({ type: 'FONT_ERROR', requestId: 'font_2', message: 'bad font' })).toBe(true);
-	});
-
-	it('rejects malformed runner payloads', () => {
-		expect(isRunnerMessage({ type: 'RUN_OK', timestamp: 'now' })).toBe(false);
-		expect(isRunnerMessage({ type: 'RUN_ERROR', message: 'bad', line: '2' })).toBe(false);
-		expect(isRunnerMessage({ type: 'EXPORT_RESULT', requestId: 'export_1', format: 'pdf' })).toBe(false);
-		expect(
-			isRunnerMessage({
-				type: 'EXPORT_PROGRESS',
-				requestId: 'export_1',
-				format: 'svg',
 				progress: { state: 'recording' },
 			})
 		).toBe(false);
@@ -172,17 +144,30 @@ describe('@textmode/runner-protocol', () => {
 				type: 'FONT_LOADED',
 				requestId: 'font_1',
 				familyName: 'Example',
-				characters: [65],
+				characters: ['A'],
 			})
 		).toBe(false);
 		expect(
 			isRunnerMessage({
 				type: 'FONT_METADATA',
 				requestId: 'font_metadata_1',
-				familyName: 'Example',
-				characters: [65],
+				familyName: 'UrsaFont',
+				characters: ['A', 'B'],
 			})
 		).toBe(false);
-		expect(isRunnerMessage({ type: 'PLAYBACK_STATE', state: { isPlaying: false, frame: 0 } })).toBe(false);
+		expect(isRunnerMessage({ type: 'FONT_ERROR', requestId: 'font_2', message: 'bad font' })).toBe(false);
+		expect(
+			isRunnerMessage({
+				type: 'PLAYBACK_STATE',
+				requestId: 'playback_1',
+				state: { isPlaying: false, frame: 0, maxFrames: 200 },
+			})
+		).toBe(false);
+	});
+
+	it('rejects malformed runner payloads', () => {
+		expect(isRunnerMessage({ type: 'RUN_OK', timestamp: 'now' })).toBe(false);
+		expect(isRunnerMessage({ type: 'RUN_ERROR', message: 'bad', line: '2' })).toBe(false);
+		expect(isRunnerMessage({ type: 'PONG', timestamp: 'now' })).toBe(false);
 	});
 });

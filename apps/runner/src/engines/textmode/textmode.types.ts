@@ -5,33 +5,6 @@
 
 import type { Textmodifier } from 'textmode.js';
 import type { CodeError } from '@/core/types';
-import type { PlaybackAction } from '@textmode/runner-protocol';
-
-export interface RuntimeSettings {
-    width: number;
-    height: number;
-    fontSize: number;
-    frameRate: number;
-}
-
-export interface PlaybackCommand {
-    action: PlaybackAction;
-    frame?: number;
-    maxFrames?: number;
-}
-
-export interface PlaybackStateSnapshot {
-    isPlaying: boolean;
-    frame: number;
-    maxFrames: number;
-    bounded?: boolean;
-    fps?: number;
-}
-
-export interface FontMetadataSnapshot {
-    familyName: string | null;
-    characters: string[];
-}
 
 /**
  * Interface for textmode instance management
@@ -40,11 +13,7 @@ export interface ITextmodeManager {
     /** Get the textmode instance */
     getInstance(): Textmodifier | null;
     /** Initialize textmode */
-    init(settings?: Partial<RuntimeSettings>): void;
-    /** Configure textmode for a fixed-size editor runtime */
-    configure(settings: RuntimeSettings): void;
-    /** Update one or more settings */
-    updateSettings(settings: Partial<RuntimeSettings>): RuntimeSettings;
+    init(): void;
     /** Pause the animation loop */
     pause(): void;
     /** Resume the animation loop */
@@ -55,12 +24,6 @@ export interface ITextmodeManager {
     clearAllSynths(): void;
     /** Set up a handler for synth dynamic parameter errors */
     setupSynthErrorHandler(handler: (error: Error) => void): void;
-    /** Current playback state */
-    getPlaybackState(): PlaybackStateSnapshot;
-    /** Apply playback command */
-    applyPlaybackCommand(command: PlaybackCommand): PlaybackStateSnapshot;
-    /** Current active font metadata */
-    getFontMetadata(fallbackName?: string | null): Promise<FontMetadataSnapshot>;
 }
 
 /**

@@ -8,9 +8,8 @@ editLink: true
 Browser iframe runtime client for the hosted textmode runner.
 
 `@textmode/runner-client` manages the runner iframe lifecycle, current
-protocol handshake, request/response routing, heartbeat monitoring, export
-helpers, font loading, playback control, reconnect, and disposal for host
-apps.
+protocol handshake, request/response routing, heartbeat monitoring, reconnect,
+and disposal for host apps.
 
 ## Errors
 
@@ -18,12 +17,6 @@ apps.
 | ------ | ------ |
 | [RunnerExecutionError](interfaces/RunnerExecutionError.md) | Error shape surfaced by runner execution callbacks and rejected run requests. |
 | [RunnerRequestError](classes/RunnerRequestError.md) | Error used when a request-scoped runner execution fails. |
-
-## Fonts
-
-| Interface | Description |
-| ------ | ------ |
-| [FontLoadResult](interfaces/FontLoadResult.md) | Metadata returned after the runner successfully loads a font file. |
 
 ## Options
 

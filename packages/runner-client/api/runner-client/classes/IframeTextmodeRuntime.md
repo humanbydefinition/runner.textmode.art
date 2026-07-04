@@ -27,174 +27,6 @@ new IframeTextmodeRuntime(options): IframeTextmodeRuntime;
 
 `IframeTextmodeRuntime`
 
-## Exports
-
-### export()
-
-```ts
-export(
-   format, 
-   options?, 
-timeoutMs?): Promise<ExportResultMessage>;
-```
-
-Exports the current runner output in any supported format.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `format` | `"gif"` \| `"webm"` \| `"image"` \| `"svg"` \| `"txt"` |
-| `options?` | \| `ImageExportOptions` \| `SvgExportOptions` \| `TxtExportOptions` \| `GifExportOptions` \| `WebmExportOptions` |
-| `timeoutMs?` | `number` |
-
-#### Returns
-
-`Promise`\<`ExportResultMessage`\>
-
-***
-
-### exportImage()
-
-```ts
-exportImage(options): Promise<ExportResultMessage>;
-```
-
-Exports the current runner output as a raster image.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `options` | `ImageExportOptions` |
-
-#### Returns
-
-`Promise`\<`ExportResultMessage`\>
-
-***
-
-### exportSvg()
-
-```ts
-exportSvg(options): Promise<ExportResultMessage>;
-```
-
-Exports the current runner output as SVG.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `options` | `SvgExportOptions` |
-
-#### Returns
-
-`Promise`\<`ExportResultMessage`\>
-
-***
-
-### exportTxt()
-
-```ts
-exportTxt(options): Promise<ExportResultMessage>;
-```
-
-Exports the current runner output as plain text.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `options` | `TxtExportOptions` |
-
-#### Returns
-
-`Promise`\<`ExportResultMessage`\>
-
-***
-
-### exportGif()
-
-```ts
-exportGif(options): Promise<ExportResultMessage>;
-```
-
-Records an animated GIF export.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `options` | `GifExportOptions` |
-
-#### Returns
-
-`Promise`\<`ExportResultMessage`\>
-
-***
-
-### exportWebm()
-
-```ts
-exportWebm(options): Promise<ExportResultMessage>;
-```
-
-Records a WebM export.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `options` | `WebmExportOptions` |
-
-#### Returns
-
-`Promise`\<`ExportResultMessage`\>
-
-## Fonts
-
-### loadFont()
-
-```ts
-loadFont(file): Promise<FontLoadResult>;
-```
-
-Loads a font file into the runner.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `file` | `File` |
-
-#### Returns
-
-`Promise`\<[`FontLoadResult`](../interfaces/FontLoadResult.md)\>
-
-## Playback
-
-### playback()
-
-```ts
-playback(action, options?): Promise<PlaybackState>;
-```
-
-Sends a playback command and resolves with the resulting playback state.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `action` | `PlaybackAction` |
-| `options` | \{ `frame?`: `number`; `maxFrames?`: `number`; \} |
-| `options.frame?` | `number` |
-| `options.maxFrames?` | `number` |
-
-#### Returns
-
-`Promise`\<`PlaybackState`\>
-
 ## Runtime
 
 ### isReady
@@ -280,7 +112,7 @@ Capabilities advertised by the connected runner.
 ### init()
 
 ```ts
-init(container, settings?): Promise<boolean>;
+init(container): Promise<boolean>;
 ```
 
 Mounts the runner iframe and performs the current protocol handshake.
@@ -290,7 +122,6 @@ Mounts the runner iframe and performs the current protocol handshake.
 | Parameter | Type | Description |
 | ------ | ------ | ------ |
 | `container` | `HTMLElement` | DOM element that should contain the runner iframe. |
-| `settings?` | `RuntimeSettings` | Optional fixed runtime settings to configure after ready. |
 
 #### Returns
 
@@ -343,46 +174,6 @@ Some browsers use this to unlock normal iframe animation cadence.
 #### Returns
 
 `void`
-
-***
-
-### configure()
-
-```ts
-configure(settings): Promise<PlaybackState | null>;
-```
-
-Configures complete fixed runtime settings.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `settings` | `RuntimeSettings` |
-
-#### Returns
-
-`Promise`\<`PlaybackState` \| `null`\>
-
-***
-
-### setSettings()
-
-```ts
-setSettings(settings): Promise<PlaybackState | null>;
-```
-
-Applies a partial runtime settings update.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `settings` | `Partial`\<`RuntimeSettings`\> |
-
-#### Returns
-
-`Promise`\<`PlaybackState` \| `null`\>
 
 ***
 

@@ -1,9 +1,4 @@
-import type {
-	ExportProgress,
-	PlaybackState,
-	RunnerCapabilities,
-	RunOkMessage,
-} from '@textmode/runner-protocol';
+import type { RunnerCapabilities, RunOkMessage } from '@textmode/runner-protocol';
 import type { RunnerExecutionError } from './errors';
 import type { RunnerRuntimeStatus } from './status';
 
@@ -57,7 +52,7 @@ export interface IframeTextmodeRuntimeOptions {
 	heartbeatIntervalMs?: number;
 	/** Maximum time without a heartbeat pong before the runner is marked hung. */
 	heartbeatTimeoutMs?: number;
-	/** Called after the runner is ready and optional runtime configuration succeeds. */
+	/** Called after the runner is ready. */
 	onReady?: (capabilities: RunnerCapabilities) => void;
 	/** Called when code execution succeeds. */
 	onRunOk?: (message: RunOkMessage) => void;
@@ -69,10 +64,6 @@ export interface IframeTextmodeRuntimeOptions {
 	onToggleUI?: () => void;
 	/** Called when the runner reports user interaction. */
 	onUserInteraction?: () => void;
-	/** Called as multi-frame exports report progress. */
-	onExportProgress?: (requestId: string, format: 'gif' | 'webm', progress: ExportProgress) => void;
-	/** Called whenever the runner reports playback state. */
-	onPlaybackState?: (state: PlaybackState) => void;
 	/** Called when the runner becomes unavailable or hung. */
 	onUnavailable?: (reason: string, status: RunnerRuntimeStatus) => void;
 	/** Called after the MessagePort connection is established. */

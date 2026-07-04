@@ -7,19 +7,13 @@ import {
 	createRunnerCapabilities,
 	isInitMessage,
 	isParentMessage,
-	type ExportMessage,
-	type GetFontMetadataMessage,
-	type LoadFontMessage,
 	type ParentToRunnerMessage,
-	type PlaybackMessage,
 	type RunnerCapabilities,
 	type RunnerToParentMessage,
-	type RuntimeSettings,
 	type WindowToRunnerMessage,
 } from '@textmode/runner-protocol';
 
 import { HandshakeHandler } from '@/core/transport/HandshakeHandler';
-import { shouldWrapPlaybackState } from './playback';
 
 /**
  * Concrete engine implementation for Textmode sketches.
@@ -38,9 +32,6 @@ export class TextmodeEngine {
 	private context: ExecutionContext;
 	private synthErrorReported = false;
 	private isExecuting = false;
-	private playbackMonitorId: number | null = null;
-	private lastPlaybackStateSentAt = 0;
-	private lastPlaybackFrameSent = -1;
 	private errorHandler: ((event: ErrorEvent) => void) | null = null;
 	private rejectionHandler: ((event: PromiseRejectionEvent) => void) | null = null;
 	private runtimeInitialized = false;
@@ -140,31 +131,6 @@ export class TextmodeEngine {
 				this.ensureRuntimeInitialized();
 				this.scheduleCode(msg.code, true, msg.requestId);
 				break;
-			case 'CONFIGURE_RUNTIME':
-				this.configureRuntime(msg.settings);
-				this.sendPlaybackState(msg.requestId);
-				break;
-			case 'SET_SETTINGS':
-				this.ensureRuntimeInitialized();
-				this.textmode.updateSettings(msg.settings);
-				this.sendPlaybackState(msg.requestId);
-				break;
-			case 'EXPORT':
-				this.ensureRuntimeInitialized();
-				void this.handleExportMessage(msg);
-				break;
-			case 'LOAD_FONT':
-				this.ensureRuntimeInitialized();
-				void this.handleLoadFontMessage(msg);
-				break;
-			case 'GET_FONT_METADATA':
-				this.ensureRuntimeInitialized();
-				void this.handleGetFontMetadataMessage(msg);
-				break;
-			case 'PLAYBACK':
-				this.ensureRuntimeInitialized();
-				this.handlePlaybackMessage(msg);
-				break;
 			case 'PING':
 				this.transport.send({ type: 'PONG', nonce: msg.nonce, timestamp: Date.now() });
 				break;
@@ -183,31 +149,15 @@ export class TextmodeEngine {
 	}
 
 	/**
-	 * Initialize Textmode environment lazily. Configurable hosts send
-	 * CONFIGURE_RUNTIME first so the initial canvas is created with their
-	 * requested dimensions; hosts without explicit settings get the legacy
-	 * default runtime on their first RUN_CODE.
+	 * Initialize Textmode environment lazily. The runner now owns a responsive,
+	 * window-sized canvas rather than accepting fixed editor runtime settings.
 	 */
-	private ensureRuntimeInitialized(settings?: Partial<RuntimeSettings>): void {
-		if (!this.runtimeInitialized) {
-			this.textmode.init(settings);
-			this.runtimeInitialized = true;
-			this.attachRuntimeEventHandlers();
-			return;
-		}
+	private ensureRuntimeInitialized(): void {
+		if (this.runtimeInitialized) return;
 
-		if (settings) {
-			this.textmode.configure(settings as RuntimeSettings);
-		}
-	}
-
-	private configureRuntime(settings: RuntimeSettings): void {
-		if (!this.runtimeInitialized) {
-			this.ensureRuntimeInitialized(settings);
-			return;
-		}
-
-		this.textmode.configure(settings);
+		this.textmode.init();
+		this.runtimeInitialized = true;
+		this.attachRuntimeEventHandlers();
 	}
 
 	private attachRuntimeEventHandlers(): void {
@@ -238,7 +188,6 @@ export class TextmodeEngine {
 		this.runtimeInitialized = false;
 		this.runtimeEventHandlersAttached = false;
 		this.synthErrorReported = false;
-		this.stopPlaybackMonitor();
 
 		window.removeEventListener('message', this.handleInitMessage);
 		window.removeEventListener('pointerdown', this.handleUserInteraction);
@@ -248,49 +197,40 @@ export class TextmodeEngine {
 		this.transport.detach();
 	}
 
-    /**
-     * Check if Textmode is rendering (to prevent frame drops during execution)
-     */
+	/**
+	 * Check if Textmode is rendering to prevent frame drops during execution.
+	 */
 	isRendering(): boolean {
 		return this.isExecuting || this.textmode.isRendering();
 	}
 
-    /**
-     * Execute code
-     */
+	/**
+	 * Execute code in the current sandboxed textmode runtime.
+	 */
 	async execute(code: string, isSoftReset: boolean, requestId?: string): Promise<void> {
 		this.ensureRuntimeInitialized();
 
-		// Reset synth error flags
 		this.synthErrorReported = false;
 		this.isExecuting = true;
-
-		// Pause animation
 		this.textmode.pause();
 
 		try {
-			// Validate syntax
 			const validation = this.context.validateSyntax(code);
 			if (!validation.valid) {
 				this.errorReporter.report(validation.error!, requestId);
 				return;
 			}
 
-			// Cleanup layers
 			this.textmode.cleanupLayers(isSoftReset);
 
-			// Execute
 			const result = await this.context.execute(code);
 
 			if (result.success) {
-				// Success!
 				this.lastWorkingCode = code;
 				this.transport.send({ type: 'RUN_OK', timestamp: Date.now(), requestId });
 			} else if (result.error) {
-				// Runtime error
 				this.errorReporter.report(result.error, requestId);
 
-				// Attempt restore
 				if (this.lastWorkingCode && this.lastWorkingCode !== code) {
 					await this.restoreLastWorking();
 				}
@@ -298,14 +238,9 @@ export class TextmodeEngine {
 		} finally {
 			this.isExecuting = false;
 			this.textmode.resume();
-			this.sendPlaybackState();
-			this.syncPlaybackMonitor();
 		}
 	}
 
-    /**
-     * Restore last working code
-     */
 	private async restoreLastWorking(): Promise<void> {
 		if (!this.lastWorkingCode) return;
 
@@ -322,219 +257,5 @@ export class TextmodeEngine {
 
 	private getCapabilities(): RunnerCapabilities {
 		return createRunnerCapabilities();
-	}
-
-	private async handleExportMessage(message: ExportMessage): Promise<void> {
-		try {
-			switch (message.format) {
-				case 'image': {
-					const options = message.options && 'format' in message.options ? message.options : {};
-					const { blob, mimeType } = await this.textmode.exportImageBlob(options);
-					this.transport.send({
-						type: 'EXPORT_RESULT',
-						requestId: message.requestId,
-						format: 'image',
-						blob,
-						mimeType,
-					});
-					break;
-				}
-				case 'svg': {
-					const text = this.textmode.exportSvg((message.options ?? {}) as Record<string, unknown>);
-					this.transport.send({
-						type: 'EXPORT_RESULT',
-						requestId: message.requestId,
-						format: 'svg',
-						text,
-						mimeType: 'image/svg+xml',
-					});
-					break;
-				}
-				case 'txt': {
-					const text = this.textmode.exportTxt((message.options ?? {}) as Record<string, unknown>);
-					this.transport.send({
-						type: 'EXPORT_RESULT',
-						requestId: message.requestId,
-						format: 'txt',
-						text,
-						mimeType: 'text/plain',
-					});
-					break;
-				}
-				case 'gif':
-					await this.textmode.exportGif({
-						...(message.options ?? {}),
-						onProgress: (progress: unknown) => {
-							this.transport.send({
-								type: 'EXPORT_PROGRESS',
-								requestId: message.requestId,
-								format: 'gif',
-								progress: this.normalizeProgress(progress),
-							});
-						},
-					});
-					this.transport.send({
-						type: 'EXPORT_RESULT',
-						requestId: message.requestId,
-						format: 'gif',
-						mimeType: 'image/gif',
-					});
-					break;
-				case 'webm':
-					await this.textmode.exportWebm({
-						...(message.options ?? {}),
-						onProgress: (progress: unknown) => {
-							this.transport.send({
-								type: 'EXPORT_PROGRESS',
-								requestId: message.requestId,
-								format: 'webm',
-								progress: this.normalizeProgress(progress),
-							});
-						},
-					});
-					this.transport.send({
-						type: 'EXPORT_RESULT',
-						requestId: message.requestId,
-						format: 'webm',
-						mimeType: 'video/webm',
-					});
-					break;
-			}
-		} catch (error) {
-			this.errorReporter.report(error as Error, message.requestId);
-		}
-	}
-
-	private async handleLoadFontMessage(message: LoadFontMessage): Promise<void> {
-		try {
-			const fallbackName = message.fileName.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim();
-			const metadata = await this.textmode.loadFontFromBuffer(
-				message.buffer,
-				message.mimeType,
-				fallbackName.length > 0 ? fallbackName : null
-			);
-
-			this.transport.send({
-				type: 'FONT_LOADED',
-				requestId: message.requestId,
-				familyName: metadata.familyName,
-				characters: metadata.characters,
-			});
-		} catch (error) {
-			this.transport.send({
-				type: 'FONT_ERROR',
-				requestId: message.requestId,
-				message: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	private async handleGetFontMetadataMessage(message: GetFontMetadataMessage): Promise<void> {
-		try {
-			const metadata = await this.textmode.getFontMetadata();
-
-			this.transport.send({
-				type: 'FONT_METADATA',
-				requestId: message.requestId,
-				familyName: metadata.familyName,
-				characters: metadata.characters,
-			});
-		} catch (error) {
-			this.transport.send({
-				type: 'FONT_ERROR',
-				requestId: message.requestId,
-				message: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	private handlePlaybackMessage(message: PlaybackMessage): void {
-		const state = this.textmode.applyPlaybackCommand({
-			action: message.action,
-			frame: message.frame,
-			maxFrames: message.maxFrames,
-		});
-
-		this.transport.send({
-			type: 'PLAYBACK_STATE',
-			requestId: message.requestId,
-			state,
-		});
-
-		if (state.isPlaying) {
-			this.syncPlaybackMonitor();
-		} else {
-			this.stopPlaybackMonitor();
-		}
-	}
-
-	private sendPlaybackState(requestId?: string): void {
-		this.transport.send({
-			type: 'PLAYBACK_STATE',
-			requestId,
-			state: this.textmode.getPlaybackState(),
-		});
-	}
-
-	private startPlaybackMonitor(): void {
-		if (this.playbackMonitorId !== null) return;
-
-		this.lastPlaybackFrameSent = this.textmode.getPlaybackState().frame;
-		this.lastPlaybackStateSentAt = performance.now();
-
-		const tick = (timestamp: number) => {
-			let state = this.textmode.getPlaybackState();
-			if (!state.isPlaying || state.bounded !== true) {
-				this.stopPlaybackMonitor();
-				this.sendPlaybackState();
-				return;
-			}
-
-			if (shouldWrapPlaybackState(state)) {
-				this.textmode.applyPlaybackCommand({ action: 'seek', frame: 0 });
-				state = this.textmode.getPlaybackState();
-			}
-
-			if (state.frame !== this.lastPlaybackFrameSent || timestamp - this.lastPlaybackStateSentAt >= 1000) {
-				this.lastPlaybackStateSentAt = timestamp;
-				this.lastPlaybackFrameSent = state.frame;
-				this.sendPlaybackState();
-			}
-
-			this.playbackMonitorId = requestAnimationFrame(tick);
-		};
-
-		this.playbackMonitorId = requestAnimationFrame(tick);
-	}
-
-	private syncPlaybackMonitor(): void {
-		const state = this.textmode.getPlaybackState();
-		if (state.isPlaying && state.bounded === true) {
-			this.startPlaybackMonitor();
-			return;
-		}
-
-		this.stopPlaybackMonitor();
-	}
-
-	private stopPlaybackMonitor(): void {
-		if (this.playbackMonitorId === null) return;
-		cancelAnimationFrame(this.playbackMonitorId);
-		this.playbackMonitorId = null;
-		this.lastPlaybackFrameSent = -1;
-	}
-
-	private normalizeProgress(progress: unknown): { state: string; frameIndex?: number; totalFrames?: number; message?: string } {
-		if (typeof progress !== 'object' || progress === null) {
-			return { state: 'recording' };
-		}
-
-		const record = progress as Record<string, unknown>;
-		return {
-			state: typeof record.state === 'string' ? record.state : 'recording',
-			frameIndex: typeof record.frameIndex === 'number' ? record.frameIndex : undefined,
-			totalFrames: typeof record.totalFrames === 'number' ? record.totalFrames : undefined,
-			message: typeof record.message === 'string' ? record.message : undefined,
-		};
 	}
 }
