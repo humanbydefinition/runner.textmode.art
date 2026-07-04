@@ -281,6 +281,28 @@ describe('@textmode/runner-client', () => {
 		runtime.dispose();
 	});
 
+	it('rejects a pending handshake when init is superseded', async () => {
+		const env = installFakeBrowser();
+		const runtime = new IframeTextmodeRuntime({
+			runnerUrl: 'https://runner.textmode.art/',
+		});
+
+		const firstReady = runtime.init(env.container as unknown as HTMLElement);
+		const firstFrame = env.iframe;
+		const firstRejection = expect(firstReady).rejects.toThrow('runner initialization superseded');
+
+		const secondReady = runtime.init(env.container as unknown as HTMLElement);
+		await firstRejection;
+
+		firstFrame.dispatch('load');
+		expect(firstFrame.contentWindow.postMessage).not.toHaveBeenCalled();
+
+		env.iframe.dispatch('load');
+		env.channel.port1.deliver({ type: 'READY', capabilities });
+		await expect(secondReady).resolves.toBe(true);
+		runtime.dispose();
+	});
+
 	it('ignores malformed runner messages', async () => {
 		const onRunOk = vi.fn();
 		const { runtime, env } = await connectRuntime({ onRunOk });

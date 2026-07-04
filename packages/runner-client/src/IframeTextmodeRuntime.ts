@@ -138,6 +138,7 @@ export class IframeTextmodeRuntime {
 			return true;
 		}
 
+		this.rejectPendingHandshake('runner initialization superseded');
 		this.disposeFrame();
 		this.ready = false;
 		this.setStatus('connecting');
@@ -159,6 +160,7 @@ export class IframeTextmodeRuntime {
 		iframe.addEventListener(
 			'load',
 			() => {
+				if (this.iframe !== iframe) return;
 				this.connectPort();
 			},
 			{ once: true }
@@ -183,6 +185,7 @@ export class IframeTextmodeRuntime {
 
 		this.pending.rejectAll(new Error('runner disposed'));
 		this.heartbeat.stop();
+		this.rejectPendingHandshake('runner disposed');
 		this.disposeFrame();
 		this.ready = false;
 		this.setStatus('idle');
@@ -397,6 +400,7 @@ export class IframeTextmodeRuntime {
 
 		this.heartbeat.stop();
 		this.pending.rejectAll(new Error('runner reconnecting'));
+		this.rejectPendingHandshake('runner reconnecting');
 		this.ready = false;
 		this.disposeFrame();
 	}
@@ -448,6 +452,21 @@ export class IframeTextmodeRuntime {
 			this.iframe.remove();
 			this.iframe = null;
 		}
+	}
+
+	private rejectPendingHandshake(reason: string): void {
+		if (!this.readyRejecter && !this.readyResolver) {
+			return;
+		}
+
+		if (this.readyTimeoutId !== null) {
+			window.clearTimeout(this.readyTimeoutId);
+			this.readyTimeoutId = null;
+		}
+
+		this.readyRejecter?.(new Error(reason));
+		this.readyResolver = null;
+		this.readyRejecter = null;
 	}
 
 	private createRequestId(prefix: string): string {
