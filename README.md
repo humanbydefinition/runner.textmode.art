@@ -9,7 +9,7 @@
 
 Monorepo for the hosted textmode runner app and its shared browser integration packages.
 
-`runner.textmode.art` is the sandboxed iframe runtime used by textmode host apps. It runs user sketches in an isolated browser context, boots a `textmode.js` rendering environment, and communicates with host apps through a small typed message protocol.
+`runner.textmode.art` is the sandboxed iframe runtime used by the browser-based textmode editor at `editor.textmode.art`. It runs user sketches in an isolated browser context, boots a `textmode.js` rendering environment with the textmode plugin stack, and communicates with host apps through a small typed message protocol.
 
 ## Workspaces
 
@@ -17,7 +17,7 @@ Monorepo for the hosted textmode runner app and its shared browser integration p
 |:--|:--|:--|
 | [`apps/runner`](./apps/runner) | Hosted Vite app deployed to [runner.textmode.art](https://runner.textmode.art). | AGPL-3.0-or-later |
 | [`packages/runner-protocol`](./packages/runner-protocol) | Shared wire protocol types, capabilities, and runtime validators. | CC0-1.0 |
-| [`packages/runner-client`](./packages/runner-client) | Browser iframe client used by host apps to mount and control the runner. | AGPL-3.0-or-later |
+| [`packages/runner-client`](./packages/runner-client) | Browser iframe client used by host apps to mount, run, reconnect, and dispose the runner. | AGPL-3.0-or-later |
 
 Public package imports are root-only:
 

@@ -2,14 +2,15 @@
 
 Hosted sandbox runner app for textmode browser hosts.
 
-The runner is served from [runner.textmode.art](https://runner.textmode.art) and is meant to be embedded as an iframe by trusted host apps such as [synth.textmode.art](https://synth.textmode.art) and [editor.textmode.art](https://editor.textmode.art). It executes user sketches away from the host document, manages a `textmode.js` runtime, and communicates with the parent app through `@textmode/runner-protocol`.
+The runner is served from [runner.textmode.art](https://runner.textmode.art) and is meant to be embedded as an iframe by the trusted editor app at [editor.textmode.art](https://editor.textmode.art), with [synth.textmode.art](https://synth.textmode.art) allowed during the domain cutover. It executes user sketches away from the host document, manages a `textmode.js` runtime with the textmode plugin stack installed, and communicates with the parent app through `@textmode/runner-protocol`.
 
 ## Runtime Behavior
 
 - Accepts the generic runner handshake from allowed parent origins.
 - Establishes a `MessagePort` transport after `INIT`.
 - Reports runner capabilities through `READY`.
-- Runs sketch code, soft resets, runtime configuration, settings updates, exports, font loading, playback control, heartbeat pings, UI toggle events, and user interaction events.
+- Runs sketch code, soft resets, heartbeat pings, UI toggle events, and user interaction events.
+- Keeps `textmode.js`, `textmode.synth.js`, `textmode.figlet.js`, `textmode.filters.js`, and `textmode.export.js` available inside sketches through the sandboxed `t` instance.
 - Redirects top-level production visits back to the configured parent app while still allowing local debug access with `?debug`.
 
 ## Development
@@ -51,7 +52,7 @@ Example production origins:
 
 ```sh
 VITE_RUNNER_PARENT_ORIGINS=https://synth.textmode.art,https://editor.textmode.art
-VITE_RUNNER_FALLBACK_URL=https://synth.textmode.art
+VITE_RUNNER_FALLBACK_URL=https://editor.textmode.art
 ```
 
 ## Deployment

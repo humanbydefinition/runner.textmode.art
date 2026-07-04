@@ -4,42 +4,18 @@ import { createTextmodeExportPlugin } from 'textmode.export.js';
 import { FigletPlugin } from 'textmode.figlet.js';
 import { SynthPlugin, setGlobalErrorCallback } from 'textmode.synth.js';
 import { FiltersPlugin } from 'textmode.filters.js';
-import type {
-    ITextmodeManager,
-    PlaybackCommand,
-    PlaybackStateSnapshot,
-    RuntimeSettings,
-    SynthLayer,
-} from './textmode.types';
+import type { ITextmodeManager, SynthLayer } from './textmode.types';
 
-type TextmodifierWithExports = Textmodifier & {
-    toSVG?: (options?: Record<string, unknown>) => string;
-    toString?: (options?: Record<string, unknown>) => string;
-    saveGIF?: (options?: Record<string, unknown>) => Promise<void>;
-    saveWEBM?: (options?: Record<string, unknown>) => Promise<void>;
-    _coreReady?: Promise<void>;
+type TextmodeSettings = {
+    width: number;
+    height: number;
+    fontSize: number;
+    frameRate: number;
 };
 
-type InternalFontManager = {
-    _fontFamilyName?: string;
-    fontFamilyName?: string;
-    _fontFace?: { family?: string | null };
-    fontFace?: { family?: string | null };
-    font?: Record<string, unknown>;
-};
-
-const DEFAULT_SETTINGS: RuntimeSettings = {
-    width: 640,
-    height: 640,
+const DEFAULT_SETTINGS: Omit<TextmodeSettings, 'width' | 'height'> = {
     fontSize: 16,
     frameRate: 60,
-};
-const FONT_METADATA_RETRY_COUNT = 8;
-const FONT_METADATA_RETRY_DELAY_MS = 50;
-
-type FontMetadata = {
-    familyName: string | null;
-    characters: string[];
 };
 
 /**
@@ -48,15 +24,12 @@ type FontMetadata = {
  */
 export class TextmodeManager implements ITextmodeManager {
     private instance: Textmodifier | null = null;
-    private settings: RuntimeSettings = {
+    private settings: TextmodeSettings = {
         width: window.innerWidth,
         height: window.innerHeight,
         fontSize: DEFAULT_SETTINGS.fontSize,
         frameRate: DEFAULT_SETTINGS.frameRate,
     };
-    private resizeToWindow = true;
-    private maxFrames = 200;
-    private playbackBounded = false;
 
     /** Callback for synth dynamic parameter errors */
     private onSynthError?: (error: Error) => void;
@@ -75,14 +48,14 @@ export class TextmodeManager implements ITextmodeManager {
     /**
      * Initialize textmode and attach to DOM
      */
-    init(settings?: Partial<RuntimeSettings>): void {
+    init(): void {
         if (this.instance) return;
 
         this.settings = {
             ...this.settings,
-            ...settings,
+            width: window.innerWidth,
+            height: window.innerHeight,
         };
-        this.resizeToWindow = settings === undefined;
 
         this.instance = textmode.create({
             width: this.settings.width,
@@ -96,31 +69,6 @@ export class TextmodeManager implements ITextmodeManager {
 
         // Handle resize
         window.addEventListener('resize', this.handleResize);
-    }
-
-    configure(settings: RuntimeSettings): void {
-        this.settings = { ...settings };
-        this.resizeToWindow = false;
-
-        if (!this.instance) {
-            this.init(this.settings);
-            return;
-        }
-
-        this.applySettings(settings);
-    }
-
-    updateSettings(settings: Partial<RuntimeSettings>): RuntimeSettings {
-        this.settings = {
-            ...this.settings,
-            ...settings,
-        };
-
-        if (this.instance) {
-            this.applySettings(this.settings);
-        }
-
-        return { ...this.settings };
     }
 
     /**
@@ -244,184 +192,12 @@ export class TextmodeManager implements ITextmodeManager {
      * Handle window resize
      */
     private handleResize = (): void => {
-        if (this.instance && this.resizeToWindow) {
-            this.instance.resizeCanvas(window.innerWidth, window.innerHeight);
+        if (this.instance) {
+            this.settings.width = window.innerWidth;
+            this.settings.height = window.innerHeight;
+            this.instance.resizeCanvas(this.settings.width, this.settings.height);
         }
     };
-
-    async exportImageBlob(options: {
-        format?: 'png' | 'jpg' | 'webp';
-        scale?: number;
-        quality?: number;
-    } = {}): Promise<{ blob: Blob; mimeType: string }> {
-        if (!this.instance) {
-            throw new Error('textmode is not initialized');
-        }
-
-        const canvas = this.instance.canvas;
-        const format = options.format ?? 'png';
-        const scale = Math.max(0.1, options.scale ?? 1);
-        const mimeType = format === 'jpg' ? 'image/jpeg' : `image/${format}`;
-        const exportCanvas = document.createElement('canvas');
-        const context = exportCanvas.getContext('2d');
-
-        if (!context) {
-            throw new Error('Unable to create export canvas context');
-        }
-
-        exportCanvas.width = Math.max(1, Math.round(canvas.width * scale));
-        exportCanvas.height = Math.max(1, Math.round(canvas.height * scale));
-        context.imageSmoothingEnabled = false;
-        context.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, exportCanvas.width, exportCanvas.height);
-
-        const blob = await new Promise<Blob>((resolve, reject) => {
-            exportCanvas.toBlob(
-                (candidate) => {
-                    if (candidate) {
-                        resolve(candidate);
-                    } else {
-                        reject(new Error(`Failed to create ${format.toUpperCase()} export`));
-                    }
-                },
-                mimeType,
-                format === 'png' ? undefined : options.quality ?? 1
-            );
-        });
-
-        return { blob, mimeType };
-    }
-
-    exportSvg(options: Record<string, unknown> = {}): string {
-        const instance = this.getExportInstance();
-        if (typeof instance.toSVG !== 'function') {
-            throw new Error('SVG export is not available');
-        }
-
-        return instance.toSVG(options);
-    }
-
-    exportTxt(options: Record<string, unknown> = {}): string {
-        const instance = this.getExportInstance();
-        if (typeof instance.toString !== 'function') {
-            throw new Error('TXT export is not available');
-        }
-
-        return instance.toString(options);
-    }
-
-    async exportGif(options: Record<string, unknown> = {}): Promise<void> {
-        const instance = this.getExportInstance();
-        if (typeof instance.saveGIF !== 'function') {
-            throw new Error('GIF export is not available');
-        }
-
-        await instance.saveGIF(options);
-    }
-
-    async exportWebm(options: Record<string, unknown> = {}): Promise<void> {
-        const instance = this.getExportInstance();
-        if (typeof instance.saveWEBM !== 'function') {
-            throw new Error('WEBM export is not available');
-        }
-
-        await instance.saveWEBM(options);
-    }
-
-    async loadFontFromBuffer(
-        buffer: ArrayBuffer,
-        mimeType = 'font/woff',
-        fallbackName: string | null = null
-    ): Promise<FontMetadata> {
-        if (!this.instance) {
-            throw new Error('textmode is not initialized');
-        }
-
-        const blob = new Blob([buffer], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-
-        try {
-            await this.instance.loadFont(url);
-            return this.getFontMetadata(fallbackName);
-        } finally {
-            URL.revokeObjectURL(url);
-        }
-    }
-
-    async getFontMetadata(fallbackName: string | null = null): Promise<FontMetadata> {
-        if (!this.instance) {
-            throw new Error('textmode is not initialized');
-        }
-
-        await this.waitForCoreReady();
-
-        for (let attempt = 0; attempt < FONT_METADATA_RETRY_COUNT; attempt += 1) {
-            const metadata = this.readFontMetadata(fallbackName);
-            if (metadata.characters.length > 0 || attempt === FONT_METADATA_RETRY_COUNT - 1) {
-                return metadata;
-            }
-
-            await this.sleep(FONT_METADATA_RETRY_DELAY_MS * (attempt + 1));
-        }
-
-        return this.readFontMetadata(fallbackName);
-    }
-
-    applyPlaybackCommand(command: PlaybackCommand): PlaybackStateSnapshot {
-        if (!this.instance) {
-            return this.getPlaybackState();
-        }
-
-        switch (command.action) {
-            case 'play':
-                this.instance.loop();
-                break;
-            case 'pause':
-                this.instance.noLoop();
-                break;
-            case 'stop':
-                this.instance.noLoop();
-                this.instance.frameCount = 0;
-                this.redraw();
-                break;
-            case 'seek':
-                this.setFrame(command.frame ?? 0);
-                break;
-            case 'next':
-                this.setFrame(this.getCurrentFrame() + 1);
-                break;
-            case 'previous':
-                this.setFrame(this.getCurrentFrame() - 1);
-                break;
-            case 'setMaxFrames':
-                this.maxFrames = Math.max(1, Math.floor(command.maxFrames ?? this.maxFrames));
-                this.playbackBounded = true;
-                if (this.getCurrentFrame() >= this.maxFrames) {
-                    this.setFrame(this.maxFrames - 1);
-                }
-                break;
-            case 'state':
-                break;
-        }
-
-        return this.getPlaybackState();
-    }
-
-    getPlaybackState(): PlaybackStateSnapshot {
-        const instance = this.instance;
-        const frame = this.getCurrentFrame();
-        const fps =
-            instance && typeof instance.frameRate === 'function'
-                ? this.settings.frameRate
-                : undefined;
-
-        return {
-            isPlaying: Boolean(instance?.isLooping?.()),
-            frame: this.playbackBounded ? Math.max(0, Math.min(frame, this.maxFrames - 1)) : frame,
-            maxFrames: this.maxFrames,
-            bounded: this.playbackBounded,
-            fps,
-        };
-    }
 
     /**
      * Set up a handler for synth dynamic parameter errors.
@@ -458,129 +234,4 @@ export class TextmodeManager implements ITextmodeManager {
         this.instance = null;
     }
 
-    private applySettings(settings: RuntimeSettings): void {
-        if (!this.instance) return;
-
-        if (this.instance.canvas.width !== settings.width || this.instance.canvas.height !== settings.height) {
-            this.instance.resizeCanvas(settings.width, settings.height);
-        }
-
-        this.instance.fontSize(settings.fontSize);
-        this.instance.frameRate(settings.frameRate);
-    }
-
-    private getExportInstance(): TextmodifierWithExports {
-        if (!this.instance) {
-            throw new Error('textmode is not initialized');
-        }
-
-        return this.instance as TextmodifierWithExports;
-    }
-
-    private getCurrentFrame(): number {
-        return Math.max(0, Math.floor(this.instance?.frameCount ?? 0));
-    }
-
-    private setFrame(targetFrame: number): void {
-        if (!this.instance) return;
-
-        const requestedFrame = Math.max(0, Math.floor(targetFrame));
-        const boundedFrame = this.playbackBounded ? Math.min(requestedFrame, this.maxFrames - 1) : requestedFrame;
-        this.instance.frameCount = Math.max(0, boundedFrame - 1);
-        this.redraw();
-    }
-
-    private redraw(): void {
-        const redraw = (this.instance as unknown as { redraw?: () => void } | null)?.redraw;
-        if (typeof redraw === 'function') {
-            redraw.call(this.instance);
-        }
-    }
-
-    private readFontMetadata(fallbackName: string | null = null): FontMetadata {
-        return {
-            familyName: this.deriveFontFamilyName(fallbackName),
-            characters: this.extractAvailableCharacters(),
-        };
-    }
-
-    private async waitForCoreReady(): Promise<void> {
-        const coreReady = (this.instance as TextmodifierWithExports | null)?._coreReady;
-        if (coreReady && typeof coreReady.then === 'function') {
-            await coreReady;
-        }
-    }
-
-    private async sleep(ms: number): Promise<void> {
-        await new Promise<void>((resolve) => window.setTimeout(resolve, ms));
-    }
-
-    private extractAvailableCharacters(): string[] {
-        if (!this.instance) return [];
-
-        try {
-            const characters =
-                (this.instance.font as unknown as { characters?: Array<{ character: string }> })?.characters ?? [];
-            const uniqueCharacters = new Set<string>();
-
-            characters.forEach((entry) => {
-                if (entry && typeof entry.character === 'string') {
-                    uniqueCharacters.add(entry.character);
-                }
-            });
-
-            return Array.from(uniqueCharacters);
-        } catch (error) {
-            console.warn('Failed to extract characters from textmodifier font:', error);
-            return [];
-        }
-    }
-
-    private deriveFontFamilyName(fallbackName: string | null = null): string | null {
-        if (!this.instance) {
-            return fallbackName?.trim() ?? null;
-        }
-
-        const fontManager = (this.instance as unknown as { font?: InternalFontManager }).font;
-        const directCandidates = [
-            fontManager?._fontFamilyName,
-            fontManager?.fontFamilyName,
-            fontManager?._fontFace?.family,
-            fontManager?.fontFace?.family,
-        ];
-
-        for (const candidate of directCandidates) {
-            if (typeof candidate === 'string' && candidate.trim().length > 0) {
-                return candidate.trim();
-            }
-        }
-
-        try {
-            const rawFont = fontManager?.font;
-            const nameTable = (rawFont as Record<string, unknown> | undefined)?.name as
-                | Record<string, unknown>
-                | undefined;
-
-            if (nameTable) {
-                const candidateKeys = ['fontFamily', 'fontFullName', 'fullName', 'preferredFamily'];
-
-                for (const key of candidateKeys) {
-                    const value = nameTable[key];
-                    if (typeof value === 'string' && value.trim().length > 0) {
-                        return value.trim();
-                    }
-                    if (Array.isArray(value)) {
-                        const match = value.find((item) => typeof item === 'string' && item.trim().length > 0);
-                        if (typeof match === 'string' && match.trim().length > 0) {
-                            return match.trim();
-                        }
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn('Unable to derive font family name from textmodifier instance:', error);
-        }
-
-        return fallbackName?.trim() || 'UrsaFont';
-    }
 }
