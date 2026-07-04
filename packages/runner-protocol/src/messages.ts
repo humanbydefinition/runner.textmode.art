@@ -1,7 +1,4 @@
 import type { RunnerCapabilities } from './capabilities';
-import type { ExportProgress, ExportRequest } from './exports';
-import type { PlaybackAction, PlaybackState } from './playback';
-import type { RuntimeSettings } from './runtime';
 
 /**
  * Initial window message sent by a host app to the runner iframe.
@@ -87,98 +84,6 @@ export interface UserInteractionMessage {
 }
 
 /**
- * Export completion payload.
- *
- * @category Messages
- */
-export interface ExportResultMessage {
-	type: 'EXPORT_RESULT';
-	/** Request identifier for the export call. */
-	requestId: string;
-	/** Completed export format. */
-	format: ExportRequest['format'];
-	/** Binary export result for blob-based formats. */
-	blob?: Blob;
-	/** Text export result for text-based formats. */
-	text?: string;
-	/** Suggested filename, when provided by the runner. */
-	filename?: string;
-	/** MIME type for the export result. */
-	mimeType?: string;
-}
-
-/**
- * Progress payload for multi-frame exports.
- *
- * @category Messages
- */
-export interface ExportProgressMessage {
-	type: 'EXPORT_PROGRESS';
-	/** Request identifier for the export call. */
-	requestId: string;
-	/** Streaming export format. */
-	format: 'gif' | 'webm';
-	/** Current progress snapshot. */
-	progress: ExportProgress;
-}
-
-/**
- * Successful font load result.
- *
- * @category Messages
- */
-export interface FontLoadedMessage {
-	type: 'FONT_LOADED';
-	/** Request identifier for the font load call. */
-	requestId: string;
-	/** Font family name detected by the runner. */
-	familyName: string | null;
-	/** Characters available in the loaded font. */
-	characters: string[];
-}
-
-/**
- * Current active font metadata.
- *
- * @category Messages
- */
-export interface FontMetadataMessage {
-	type: 'FONT_METADATA';
-	/** Request identifier for the metadata request. */
-	requestId: string;
-	/** Active font family name detected by the runner. */
-	familyName: string | null;
-	/** Characters available in the active font. */
-	characters: string[];
-}
-
-/**
- * Font load or metadata failure result.
- *
- * @category Messages
- */
-export interface FontErrorMessage {
-	type: 'FONT_ERROR';
-	/** Request identifier for the font request. */
-	requestId: string;
-	/** Human-readable error message. */
-	message: string;
-}
-
-/**
- * Playback state response or event.
- *
- * @category Messages
- */
-export interface PlaybackStateMessage {
-	type: 'PLAYBACK_STATE';
-	/** Request identifier when the state belongs to a playback request. */
-	requestId?: string;
-	/** Current playback state. */
-	state: PlaybackState;
-}
-
-/**
  * Heartbeat response from the runner.
  *
  * @category Messages
@@ -203,12 +108,6 @@ export type RunnerToParentMessage =
 	| SynthErrorMessage
 	| ToggleUIMessage
 	| UserInteractionMessage
-	| ExportResultMessage
-	| ExportProgressMessage
-	| FontLoadedMessage
-	| FontMetadataMessage
-	| FontErrorMessage
-	| PlaybackStateMessage
 	| PongMessage;
 
 /**
@@ -247,92 +146,6 @@ export interface DisposeMessage {
 }
 
 /**
- * Request to initialize or reconfigure fixed runtime settings.
- *
- * @category Messages
- */
-export interface ConfigureRuntimeMessage {
-	type: 'CONFIGURE_RUNTIME';
-	/** Complete runtime settings. */
-	settings: RuntimeSettings;
-	/** Optional request identifier for result routing. */
-	requestId?: string;
-}
-
-/**
- * Request to update part of the current runtime settings.
- *
- * @category Messages
- */
-export interface SetSettingsMessage {
-	type: 'SET_SETTINGS';
-	/** Partial runtime settings to apply. */
-	settings: Partial<RuntimeSettings>;
-	/** Optional request identifier for result routing. */
-	requestId?: string;
-}
-
-/**
- * Request to export the current runner output.
- *
- * @category Messages
- */
-export interface ExportMessage {
-	type: 'EXPORT';
-	/** Request identifier for result routing. */
-	requestId: string;
-	/** Requested export format. */
-	format: ExportRequest['format'];
-	/** Export options matching the requested format. */
-	options?: ExportRequest['options'];
-}
-
-/**
- * Request to load a font file into the runner.
- *
- * @category Messages
- */
-export interface LoadFontMessage {
-	type: 'LOAD_FONT';
-	/** Request identifier for result routing. */
-	requestId: string;
-	/** Original file name. */
-	fileName: string;
-	/** Browser-reported MIME type, when available. */
-	mimeType?: string;
-	/** Font file bytes. */
-	buffer: ArrayBuffer;
-}
-
-/**
- * Request metadata for the runner's active font.
- *
- * @category Messages
- */
-export interface GetFontMetadataMessage {
-	type: 'GET_FONT_METADATA';
-	/** Request identifier for result routing. */
-	requestId: string;
-}
-
-/**
- * Request to control or inspect playback.
- *
- * @category Messages
- */
-export interface PlaybackMessage {
-	type: 'PLAYBACK';
-	/** Optional request identifier for result routing. */
-	requestId?: string;
-	/** Playback action to perform. */
-	action: PlaybackAction;
-	/** Target frame for seek-like actions. */
-	frame?: number;
-	/** Maximum frame count for playback range updates. */
-	maxFrames?: number;
-}
-
-/**
  * Heartbeat request sent by a host app.
  *
  * @category Messages
@@ -352,12 +165,6 @@ export type ParentToRunnerMessage =
 	| RunCodeMessage
 	| SoftResetMessage
 	| DisposeMessage
-	| ConfigureRuntimeMessage
-	| SetSettingsMessage
-	| ExportMessage
-	| LoadFontMessage
-	| GetFontMetadataMessage
-	| PlaybackMessage
 	| PingMessage;
 
 /**

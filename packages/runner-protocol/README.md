@@ -4,9 +4,8 @@ Shared TypeScript message contract for the hosted textmode runner iframe.
 
 This package is the single source of truth for the wire messages exchanged by
 the runner and browser host apps in the textmode.js ecosystem.
-It contains the public message types, capability model, runtime settings,
-export/playback/font payloads, and runtime validators used on both sides of the
-iframe boundary.
+It contains the public message types, capability model, and runtime validators
+used on both sides of the iframe boundary.
 
 ## Install
 
@@ -58,7 +57,7 @@ function runMessage(message: ParentToRunnerMessage): void {
 Import from the package root only:
 
 ```ts
-import { isRunnerMessage, type RuntimeSettings } from '@textmode/runner-protocol';
+import { isRunnerMessage, type ParentToRunnerMessage } from '@textmode/runner-protocol';
 ```
 
 Public subpath imports are intentionally not supported. This keeps the protocol
@@ -66,11 +65,7 @@ package free to reorganize internal modules without breaking consumers.
 
 The main exports are grouped around:
 
-- capabilities: `RunnerCapabilities`, `ExportFormat`,
-  `createRunnerCapabilities`
-- runtime settings: `RuntimeSettings`
-- exports: image, SVG, TXT, GIF, and WebM option/result/progress types
-- playback: `PlaybackAction`, `PlaybackState`
+- capabilities: `RunnerCapabilities`, `createRunnerCapabilities`
 - messages: `InitMessage`, `ParentToRunnerMessage`, `RunnerToParentMessage`,
   `Message`
 - guards: `isInitMessage`, `isParentMessage`, `isRunnerMessage`,
@@ -80,8 +75,8 @@ The main exports are grouped around:
 
 The runner protocol has one current message shape. Runtime protocol version
 negotiation is intentionally absent: npm package semver describes source
-compatibility, while runner feature availability is described through
-capabilities.
+compatibility, while runner feature availability is described through the small
+capability payload.
 
 The initial window message is generic for every host app:
 
@@ -93,6 +88,12 @@ After a successful handshake, the runner responds with:
 
 ```ts
 { type: 'READY', capabilities: RunnerCapabilities }
+```
+
+The current capability payload is:
+
+```ts
+{ heartbeat: true }
 ```
 
 Messages sent after that point use the `ParentToRunnerMessage` and
