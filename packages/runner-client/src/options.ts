@@ -60,6 +60,8 @@ export interface IframeTextmodeRuntimeOptions {
 	onRunError?: (error: RunnerExecutionError) => void;
 	/** Called when the runner reports a synth parameter error. */
 	onSynthError?: (message: string) => void;
+	/** Called when the runner requests a fresh host runtime. */
+	onHardReset?: () => void;
 	/** Called when the runner requests host UI visibility changes. */
 	onToggleUI?: () => void;
 	/** Called when the runner reports user interaction. */

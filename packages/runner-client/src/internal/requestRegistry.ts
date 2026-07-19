@@ -150,6 +150,7 @@ export function requestKindForMessage(type: ParentToRunnerMessage['type']): Requ
 			return 'run';
 		case 'PING':
 		case 'DISPOSE':
+		case 'AUDIO_DATA':
 			return 'lifecycle';
 	}
 }

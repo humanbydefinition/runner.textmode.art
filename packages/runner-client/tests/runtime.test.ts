@@ -259,6 +259,7 @@ describe('@textmode/runner-client', () => {
 		expect(requestKindForMessage('SOFT_RESET')).toBe('run');
 		expect(requestKindForMessage('PING')).toBe('lifecycle');
 		expect(requestKindForMessage('DISPOSE')).toBe('lifecycle');
+		expect(requestKindForMessage('AUDIO_DATA')).toBe('lifecycle');
 	});
 
 	it('sends the current INIT shape during handshake', async () => {
@@ -364,16 +365,45 @@ describe('@textmode/runner-client', () => {
 		runtime.dispose();
 	});
 
+	it('sends audio data only when ready without registering a pending request', async () => {
+		const env = installFakeBrowser();
+		const runtime = new IframeTextmodeRuntime({
+			runnerUrl: 'https://runner.textmode.art/',
+		});
+		const frame = {
+			fft: new Uint8Array([1, 2, 3]),
+			waveform: new Uint8Array([128, 129, 127]),
+			timestamp: Date.now(),
+		};
+
+		expect(runtime.sendAudioData(frame)).toBe(false);
+
+		const readyPromise = runtime.init(env.container as unknown as HTMLElement);
+		env.iframe.dispatch('load');
+		env.channel.port1.deliver({ type: 'READY', capabilities });
+		await readyPromise;
+
+		expect(runtime.sendAudioData(frame)).toBe(true);
+		expect(env.channel.port1.sent.at(-1)).toEqual({
+			type: 'AUDIO_DATA',
+			...frame,
+		});
+		runtime.dispose();
+	});
+
 	it('routes runner callbacks and heartbeat pongs', async () => {
+		const onHardReset = vi.fn();
 		const onSynthError = vi.fn();
 		const onToggleUI = vi.fn();
 		const onUserInteraction = vi.fn();
-		const { runtime, env } = await connectRuntime({ onSynthError, onToggleUI, onUserInteraction });
+		const { runtime, env } = await connectRuntime({ onHardReset, onSynthError, onToggleUI, onUserInteraction });
 
 		env.channel.port1.deliver({ type: 'SYNTH_ERROR', message: 'bad uniform' });
+		env.channel.port1.deliver({ type: 'HARD_RESET' });
 		env.channel.port1.deliver({ type: 'TOGGLE_UI' });
 		env.channel.port1.deliver({ type: 'USER_INTERACTION' });
 
+		expect(onHardReset).toHaveBeenCalledTimes(1);
 		expect(onSynthError).toHaveBeenCalledWith('bad uniform');
 		expect(onToggleUI).toHaveBeenCalledTimes(1);
 		expect(onUserInteraction).toHaveBeenCalledTimes(1);
@@ -433,5 +463,18 @@ describe('@textmode/runner-client', () => {
 		expect(env.channel.port2.close).toHaveBeenCalled();
 		expect(runtime.status).toBe('idle');
 		await expect(pendingRun).rejects.toThrow('runner disposed');
+	});
+
+	it('rejects pending handshake when disposed before iframe loads', async () => {
+		const env = installFakeBrowser();
+		const runtime = new IframeTextmodeRuntime({
+			runnerUrl: 'https://runner.textmode.art/',
+		});
+
+		const readyPromise = runtime.init(env.container as unknown as HTMLElement);
+		runtime.dispose();
+
+		await expect(readyPromise).rejects.toThrow('runner disposed');
+		expect(runtime.status).toBe('idle');
 	});
 });

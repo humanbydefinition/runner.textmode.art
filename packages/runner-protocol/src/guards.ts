@@ -1,11 +1,15 @@
 import type { RunnerCapabilities } from './capabilities';
 import type { InitMessage, ParentToRunnerMessage, RunnerToParentMessage } from './messages';
 import {
+	isBoundedUint8Array,
 	isFiniteNumber,
 	isMessageRecord,
 	isOptionalFiniteNumber,
 	isOptionalString,
 } from './guards.internal';
+
+const MAX_AUDIO_FFT_BINS = 4096;
+const MAX_AUDIO_WAVEFORM_SAMPLES = 8192;
 
 /**
  * Checks whether a value is a valid current runner-to-host message.
@@ -18,6 +22,7 @@ export function isRunnerMessage(msg: unknown): msg is RunnerToParentMessage {
 	switch (msg.type) {
 		case 'READY':
 			return !('v' in msg) && isRunnerCapabilities(msg.capabilities);
+		case 'HARD_RESET':
 		case 'TOGGLE_UI':
 		case 'USER_INTERACTION':
 			return true;
@@ -56,6 +61,12 @@ export function isParentMessage(msg: unknown): msg is ParentToRunnerMessage {
 			return true;
 		case 'PING':
 			return isOptionalString(msg.nonce);
+		case 'AUDIO_DATA':
+			return (
+				isBoundedUint8Array(msg.fft, MAX_AUDIO_FFT_BINS) &&
+				isBoundedUint8Array(msg.waveform, MAX_AUDIO_WAVEFORM_SAMPLES) &&
+				isFiniteNumber(msg.timestamp)
+			);
 		default:
 			return false;
 	}

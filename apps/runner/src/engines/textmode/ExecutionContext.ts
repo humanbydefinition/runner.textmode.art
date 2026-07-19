@@ -2,6 +2,7 @@ import type { ExecutionResult, ValidationResult } from './textmode.types';
 import { SafeProxyFactory } from './SafeProxyFactory';
 import { ErrorReporter } from '@/engines/textmode/ErrorReporter';
 import { normalizeError } from '@/core/errors/normalizeError';
+import type { AudioReceiver } from '@/engines/textmode/AudioReceiver';
 import {
     src,
     osc,
@@ -41,6 +42,8 @@ export interface ExecutionContextOptions {
     getTextmode: () => Textmodifier | null;
     /** Error reporter instance */
     errorReporter: ErrorReporter;
+    /** Audio receiver for audio-reactive sketches */
+    audioReceiver: AudioReceiver;
 }
 
 /**
@@ -89,10 +92,22 @@ export class ExecutionContext {
         // Get textmode and create safe proxy
         const t = this.options.getTextmode();
         const safeT = t ? this.proxyFactory.createTextmodeProxy(t) : null;
+        const audioReceiver = this.options.audioReceiver;
+        const audio = {
+            fft: () => audioReceiver.getFft(),
+            waveform: () => audioReceiver.getWaveform(),
+            bass: () => audioReceiver.getBass(),
+            mid: () => audioReceiver.getMid(),
+            high: () => audioReceiver.getHigh(),
+            volume: () => audioReceiver.getVolume(),
+            timestamp: () => audioReceiver.getTimestamp(),
+            hasData: () => audioReceiver.hasData(),
+        };
 
         // Prepare globals
         const globals: Record<string, unknown> = {
             t: safeT,
+            audio,
             onDispose: (callback: unknown) => this.registerUserDispose(callback),
             ...SYNTH_GLOBALS,
         };

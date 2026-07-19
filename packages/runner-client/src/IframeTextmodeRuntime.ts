@@ -1,5 +1,6 @@
 import {
 	isRunnerCapabilities,
+	type AudioDataMessage,
 	type InitMessage,
 	type ParentToRunnerMessage,
 	type ReadyMessage,
@@ -249,6 +250,28 @@ export class IframeTextmodeRuntime {
 		return true;
 	}
 
+	/**
+	 * Sends a fire-and-forget audio analysis frame to the runner.
+	 *
+	 * Audio frames are intentionally not request-tracked: hosts may send them at
+	 * animation-frame cadence, and stale frames can be safely dropped.
+	 *
+	 * @category Runtime
+	 */
+	sendAudioData(data: Omit<AudioDataMessage, 'type'>): boolean {
+		if (!this.port || !this.ready) {
+			return false;
+		}
+
+		this.postMessage({
+			type: 'AUDIO_DATA',
+			fft: data.fft,
+			waveform: data.waveform,
+			timestamp: data.timestamp,
+		});
+		return true;
+	}
+
 	private connectPort(): void {
 		if (!this.iframe?.contentWindow) {
 			this.handleUnavailable('runner frame is unavailable');
@@ -280,6 +303,9 @@ export class IframeTextmodeRuntime {
 			onRunError: (runErrorMessage) => this.handleRunError(runErrorMessage),
 			onSynthError: (synthErrorMessage) => {
 				this.options.onSynthError?.(synthErrorMessage.message);
+			},
+			onHardReset: () => {
+				this.options.onHardReset?.();
 			},
 			onToggleUI: () => {
 				this.options.onToggleUI?.();

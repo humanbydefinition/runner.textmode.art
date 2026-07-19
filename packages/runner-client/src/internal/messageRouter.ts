@@ -12,6 +12,7 @@ export interface RunnerMessageHandlers {
 	onRunOk: (message: RunOkMessage) => void;
 	onRunError: (message: RunErrorMessage) => void;
 	onSynthError: (message: SynthErrorMessage) => void;
+	onHardReset: () => void;
 	onToggleUI: () => void;
 	onUserInteraction: () => void;
 	onPong: (message: PongMessage) => void;
@@ -34,6 +35,9 @@ export function routeRunnerMessage(message: unknown, handlers: RunnerMessageHand
 			break;
 		case 'SYNTH_ERROR':
 			handlers.onSynthError(message);
+			break;
+		case 'HARD_RESET':
+			handlers.onHardReset();
 			break;
 		case 'TOGGLE_UI':
 			handlers.onToggleUI();

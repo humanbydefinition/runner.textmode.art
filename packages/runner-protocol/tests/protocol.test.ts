@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createContext, runInContext } from 'node:vm';
 import {
 	createRunnerCapabilities,
 	isInitMessage,
@@ -78,6 +79,30 @@ describe('@textmode/runner-protocol', () => {
 		expect(isParentMessage({ type: 'SOFT_RESET', requestId: 'run_2', code: 't.draw(() => {})' })).toBe(true);
 		expect(isParentMessage({ type: 'DISPOSE' })).toBe(true);
 		expect(isParentMessage({ type: 'PING', nonce: 'heartbeat_1' })).toBe(true);
+		expect(
+			isParentMessage({
+				type: 'AUDIO_DATA',
+				fft: new Uint8Array([0, 127, 255]),
+				waveform: new Uint8Array([128, 129, 127]),
+				timestamp: Date.now(),
+			})
+		).toBe(true);
+	});
+
+	it('accepts audio typed arrays from another JavaScript realm', () => {
+		const context = createContext({});
+		const fft = runInContext('new Uint8Array([0, 127, 255])', context) as Uint8Array;
+		const waveform = runInContext('new Uint8Array([128, 129, 127])', context) as Uint8Array;
+
+		expect(fft instanceof Uint8Array).toBe(false);
+		expect(
+			isParentMessage({
+				type: 'AUDIO_DATA',
+				fft,
+				waveform,
+				timestamp: 1,
+			})
+		).toBe(true);
 	});
 
 	it('rejects removed editor parent messages', () => {
@@ -109,6 +134,34 @@ describe('@textmode/runner-protocol', () => {
 		expect(isParentMessage({ type: 'RUN_CODE' })).toBe(false);
 		expect(isParentMessage({ type: 'SOFT_RESET', code: 42 })).toBe(false);
 		expect(isParentMessage({ type: 'PING', nonce: 123 })).toBe(false);
+		expect(isParentMessage({ type: 'AUDIO_DATA', fft: [1, 2], waveform: new Uint8Array([128]), timestamp: 1 })).toBe(
+			false
+		);
+		expect(isParentMessage({ type: 'AUDIO_DATA', fft: new Uint8Array([1]), timestamp: 1 })).toBe(false);
+		expect(
+			isParentMessage({
+				type: 'AUDIO_DATA',
+				fft: new Uint8Array([1]),
+				waveform: new Uint8Array([128]),
+				timestamp: Number.NaN,
+			})
+		).toBe(false);
+		expect(
+			isParentMessage({
+				type: 'AUDIO_DATA',
+				fft: new Uint8Array(4097),
+				waveform: new Uint8Array([128]),
+				timestamp: 1,
+			})
+		).toBe(false);
+		expect(
+			isParentMessage({
+				type: 'AUDIO_DATA',
+				fft: new Uint8Array([1]),
+				waveform: new Uint8Array(8193),
+				timestamp: 1,
+			})
+		).toBe(false);
 	});
 
 	it('validates current runner responses', () => {
@@ -124,6 +177,7 @@ describe('@textmode/runner-protocol', () => {
 			})
 		).toBe(true);
 		expect(isRunnerMessage({ type: 'SYNTH_ERROR', message: 'bad uniform', uniformName: 'uTime' })).toBe(true);
+		expect(isRunnerMessage({ type: 'HARD_RESET' })).toBe(true);
 		expect(isRunnerMessage({ type: 'TOGGLE_UI' })).toBe(true);
 		expect(isRunnerMessage({ type: 'USER_INTERACTION' })).toBe(true);
 		expect(isRunnerMessage({ type: 'PONG', nonce: 'heartbeat_1', timestamp: Date.now() })).toBe(true);

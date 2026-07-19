@@ -75,6 +75,15 @@ export interface ToggleUIMessage {
 }
 
 /**
+ * Runner-originated shortcut event requesting a fresh host runtime.
+ *
+ * @category Messages
+ */
+export interface HardResetMessage {
+	type: 'HARD_RESET';
+}
+
+/**
  * Runner-originated user interaction event.
  *
  * @category Messages
@@ -106,6 +115,7 @@ export type RunnerToParentMessage =
 	| RunOkMessage
 	| RunErrorMessage
 	| SynthErrorMessage
+	| HardResetMessage
 	| ToggleUIMessage
 	| UserInteractionMessage
 	| PongMessage;
@@ -157,6 +167,24 @@ export interface PingMessage {
 }
 
 /**
+ * Fire-and-forget audio analysis frame sent by a host app.
+ *
+ * Values use the Web Audio byte analyser convention:
+ * frequency bins and waveform samples are integers in the 0-255 range.
+ *
+ * @category Messages
+ */
+export interface AudioDataMessage {
+	type: 'AUDIO_DATA';
+	/** Frequency-domain FFT data. */
+	fft: Uint8Array;
+	/** Time-domain waveform data. */
+	waveform: Uint8Array;
+	/** Host-side capture timestamp. */
+	timestamp: number;
+}
+
+/**
  * Messages sent from a host app to the runner after handshake.
  *
  * @category Messages
@@ -165,7 +193,8 @@ export type ParentToRunnerMessage =
 	| RunCodeMessage
 	| SoftResetMessage
 	| DisposeMessage
-	| PingMessage;
+	| PingMessage
+	| AudioDataMessage;
 
 /**
  * Messages sent to the runner iframe window before MessagePort attachment.

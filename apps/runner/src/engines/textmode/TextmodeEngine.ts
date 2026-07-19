@@ -1,6 +1,7 @@
 import { MessagePortTransport } from '@/core/transport/MessagePortTransport';
 import { TextmodeManager } from '@/engines/textmode/TextmodeManager';
 import { ExecutionContext } from '@/engines/textmode/ExecutionContext';
+import { AudioReceiver } from '@/engines/textmode/AudioReceiver';
 import { ErrorReporter } from '@/engines/textmode/ErrorReporter';
 import { FrameScheduler } from '@/engines/textmode/FrameScheduler';
 import {
@@ -14,6 +15,7 @@ import {
 } from '@textmode/runner-protocol';
 
 import { HandshakeHandler } from '@/core/transport/HandshakeHandler';
+import { getRunnerShortcut } from './shortcuts';
 
 /**
  * Concrete engine implementation for Textmode sketches.
@@ -29,6 +31,7 @@ export class TextmodeEngine {
 	private lastWorkingCode: string | null = null;
 	private hasStarted = false;
 	private textmode: TextmodeManager;
+	private audioReceiver: AudioReceiver;
 	private context: ExecutionContext;
 	private synthErrorReported = false;
 	private isExecuting = false;
@@ -40,10 +43,11 @@ export class TextmodeEngine {
 		this.transport.send({ type: 'USER_INTERACTION' });
 	};
 	private readonly handleKeyDown = (event: KeyboardEvent): void => {
-		if (event.ctrlKey && event.shiftKey && (event.key === 'H' || event.key === 'h')) {
-			event.preventDefault();
-			this.transport.send({ type: 'TOGGLE_UI' });
-		}
+		const shortcut = getRunnerShortcut(event);
+		if (!shortcut) return;
+
+		event.preventDefault();
+		this.transport.send({ type: shortcut === 'hard-reset' ? 'HARD_RESET' : 'TOGGLE_UI' });
 	};
 
 	constructor(allowedParentOrigins: Set<string>) {
@@ -55,9 +59,11 @@ export class TextmodeEngine {
 		});
 
 		this.textmode = new TextmodeManager();
+		this.audioReceiver = new AudioReceiver();
 		this.context = new ExecutionContext({
 			getTextmode: () => this.textmode.getInstance(),
 			errorReporter: this.errorReporter,
+			audioReceiver: this.audioReceiver,
 		});
 
 		this.handshakeHandler = new HandshakeHandler({
@@ -133,6 +139,9 @@ export class TextmodeEngine {
 				break;
 			case 'PING':
 				this.transport.send({ type: 'PONG', nonce: msg.nonce, timestamp: Date.now() });
+				break;
+			case 'AUDIO_DATA':
+				this.audioReceiver.update(msg);
 				break;
 			case 'DISPOSE':
 				this.dispose();

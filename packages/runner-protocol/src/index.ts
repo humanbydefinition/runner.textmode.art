@@ -20,7 +20,9 @@ export {
 	isRunnerMessage,
 } from './guards';
 export {
+	type AudioDataMessage,
 	type DisposeMessage,
+	type HardResetMessage,
 	type InitMessage,
 	type Message,
 	type ParentToRunnerMessage,
