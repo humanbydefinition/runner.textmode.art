@@ -40,6 +40,8 @@ const SYNTH_GLOBALS = {
 export interface ExecutionContextOptions {
     /** Get the textmode instance */
     getTextmode: () => Textmodifier | null;
+    /** Run an optional setup callback through the textmode execution lifecycle. */
+    runTextmodeSetup: (callback?: () => void | Promise<void>) => Promise<void>;
     /** Error reporter instance */
     errorReporter: ErrorReporter;
     /** Audio receiver for audio-reactive sketches */
@@ -91,7 +93,16 @@ export class ExecutionContext {
 
         // Get textmode and create safe proxy
         const t = this.options.getTextmode();
-        const safeT = t ? this.proxyFactory.createTextmodeProxy(t) : null;
+        let hasSetupCallback = false;
+        let setupCallback: unknown;
+        const safeT = t
+            ? this.proxyFactory.createTextmodeProxy(t, {
+                  onSetup: (callback) => {
+                      hasSetupCallback = true;
+                      setupCallback = callback;
+                  },
+              })
+            : null;
         const audioReceiver = this.options.audioReceiver;
         const audio = {
             fft: () => audioReceiver.getFft(),
@@ -124,6 +135,14 @@ export class ExecutionContext {
             if (typeof result === 'function') {
                 this.userDisposers.push(result);
             }
+
+            if (hasSetupCallback && typeof setupCallback !== 'function') {
+                throw new TypeError('t.setup expects a function');
+            }
+
+            await this.options.runTextmodeSetup(
+                hasSetupCallback ? (setupCallback as () => void | Promise<void>) : undefined
+            );
 
             return {
                 success: true,

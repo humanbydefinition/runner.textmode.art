@@ -15,6 +15,7 @@ describe('ExecutionContext audio global', () => {
 
 		const context = new ExecutionContext({
 			getTextmode: () => null,
+			runTextmodeSetup: async () => {},
 			errorReporter: new ErrorReporter(() => {}),
 			audioReceiver,
 		});

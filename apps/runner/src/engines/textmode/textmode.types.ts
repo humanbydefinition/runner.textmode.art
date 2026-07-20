@@ -16,6 +16,8 @@ export interface ITextmodeManager {
     init(): void;
     /** Pause the animation loop */
     pause(): void;
+    /** Run an optional callback through the execution-scoped setup lifecycle */
+    runUserSetup(callback?: () => void | Promise<void>): Promise<void>;
     /** Resume the animation loop */
     resume(): void;
     /** Clean up layers before new execution */

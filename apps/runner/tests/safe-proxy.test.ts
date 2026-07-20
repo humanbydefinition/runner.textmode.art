@@ -55,4 +55,28 @@ describe('SafeProxyFactory', () => {
 		wrappedCallback?.();
 		expect(onDrawError).toHaveBeenCalledWith(error);
 	});
+
+	it('captures setup callbacks without forwarding them to the one-shot textmode lifecycle', async () => {
+		const setup = vi.fn();
+		const onSetup = vi.fn();
+		const target = {
+			draw: vi.fn(),
+			loadImage: vi.fn(),
+			loadVideo: vi.fn(),
+			loadFont: vi.fn(),
+			setup,
+			layers: { base: {}, add: vi.fn(), all: [] },
+		};
+		const factory = new SafeProxyFactory({
+			onDrawError: vi.fn(),
+			hasDrawError: () => false,
+		});
+		const callback = vi.fn();
+
+		const proxy = factory.createTextmodeProxy(target as never, { onSetup });
+		await proxy.setup(callback);
+
+		expect(onSetup).toHaveBeenCalledWith(callback);
+		expect(setup).not.toHaveBeenCalled();
+	});
 });

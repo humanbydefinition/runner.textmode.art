@@ -7,6 +7,11 @@ export interface SafeProxyOptions {
     hasDrawError: () => boolean;
 }
 
+export interface TextmodeProxyExecutionHooks {
+    /** Capture the setup callback for this code execution. */
+    onSetup: (callback: unknown) => void;
+}
+
 /**
  * Creates proxies for textmode objects that safely wrap draw callbacks.
  * Ensures runtime errors in user draw loops don't crash the entire application.
@@ -23,10 +28,17 @@ export class SafeProxyFactory {
     /**
      * Create a proxy for the main textmode instance
      */
-    createTextmodeProxy(original: Textmodifier): Textmodifier {
+    createTextmodeProxy(original: Textmodifier, hooks?: TextmodeProxyExecutionHooks): Textmodifier {
         return new Proxy(original, {
             get: (target, prop) => {
                 const value = (target as unknown as Record<string | symbol, unknown>)[prop];
+
+                if (prop === 'setup' && hooks) {
+                    return (callback: unknown): Promise<void> => {
+                        hooks.onSetup(callback);
+                        return Promise.resolve();
+                    };
+                }
 
                 if (prop === 'draw') {
                     return (callback: () => void) => target.draw(this.wrapDrawCallback(callback));

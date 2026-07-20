@@ -13,6 +13,14 @@ type TextmodeSettings = {
     frameRate: number;
 };
 
+type UserSetupCallback = () => void | Promise<void>;
+
+type InitialSetupRequest = {
+    callback?: UserSetupCallback;
+    resolve: () => void;
+    reject: (error: unknown) => void;
+};
+
 const DEFAULT_SETTINGS: Omit<TextmodeSettings, 'width' | 'height'> = {
     fontSize: 16,
     frameRate: 60,
@@ -24,6 +32,9 @@ const DEFAULT_SETTINGS: Omit<TextmodeSettings, 'width' | 'height'> = {
  */
 export class TextmodeManager implements ITextmodeManager {
     private instance: Textmodifier | null = null;
+    private initialSetupComplete = false;
+    private initialSetupRequest: InitialSetupRequest | null = null;
+    private resolveInitialSetupRequest: ((request: InitialSetupRequest) => void) | null = null;
     private settings: TextmodeSettings = {
         width: window.innerWidth,
         height: window.innerHeight,
@@ -57,12 +68,48 @@ export class TextmodeManager implements ITextmodeManager {
             height: window.innerHeight,
         };
 
+        const initialSetupRequest = new Promise<InitialSetupRequest>((resolve) => {
+            this.resolveInitialSetupRequest = resolve;
+        });
+
         this.instance = textmode.create({
             width: this.settings.width,
             height: this.settings.height,
             fontSize: this.settings.fontSize,
             frameRate: this.settings.frameRate,
             plugins: [createTextmodeExportPlugin({ overlay: false }), SynthPlugin, FiltersPlugin, FigletPlugin],
+        });
+
+        const instance = this.instance;
+        void instance.setup(async () => {
+            const request = await initialSetupRequest;
+
+            if (this.instance !== instance) {
+                request.reject(new Error('Textmode was disposed before setup could run'));
+                return;
+            }
+
+            instance.noLoop();
+            let setupError: unknown;
+            let setupSucceeded = false;
+
+            try {
+                await request.callback?.();
+                setupSucceeded = true;
+            } catch (error) {
+                setupError = error;
+            } finally {
+                if (this.instance === instance) {
+                    this.initialSetupComplete = true;
+                    this.initialSetupRequest = null;
+                }
+            }
+
+            if (setupSucceeded) {
+                request.resolve();
+            } else {
+                request.reject(setupError);
+            }
         });
 
         document.body.appendChild(this.instance.canvas);
@@ -76,6 +123,38 @@ export class TextmodeManager implements ITextmodeManager {
      */
     pause(): void {
         this.instance?.noLoop();
+    }
+
+    /**
+     * Run the first execution inside textmode's public one-shot setup lifecycle,
+     * then run later execution-scoped setup callbacks directly.
+     */
+    async runUserSetup(callback?: UserSetupCallback): Promise<void> {
+        const instance = this.instance;
+        if (!instance) {
+            throw new Error('Textmode is not initialized');
+        }
+
+        if (!this.initialSetupComplete) {
+            const resolveRequest = this.resolveInitialSetupRequest;
+            if (!resolveRequest) {
+                throw new Error('Textmode setup is already running');
+            }
+
+            this.resolveInitialSetupRequest = null;
+            return new Promise<void>((resolve, reject) => {
+                const request = { callback, resolve, reject };
+                this.initialSetupRequest = request;
+                resolveRequest(request);
+            });
+        }
+
+        if (this.instance !== instance) {
+            throw new Error('Textmode was disposed before setup could run');
+        }
+
+        instance.noLoop();
+        await callback?.();
     }
 
     /**
@@ -227,6 +306,16 @@ export class TextmodeManager implements ITextmodeManager {
 
         // Clear the global synth error callback
         setGlobalErrorCallback(null);
+
+        const setupDisposedError = new Error('Textmode was disposed before setup could run');
+        this.initialSetupRequest?.reject(setupDisposedError);
+        this.resolveInitialSetupRequest?.({
+            resolve: () => {},
+            reject: () => {},
+        });
+        this.initialSetupRequest = null;
+        this.resolveInitialSetupRequest = null;
+        this.initialSetupComplete = false;
 
         const canvas = this.instance?.canvas ?? null;
         this.instance?.destroy();

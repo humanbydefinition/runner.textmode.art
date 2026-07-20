@@ -62,6 +62,7 @@ export class TextmodeEngine {
 		this.audioReceiver = new AudioReceiver();
 		this.context = new ExecutionContext({
 			getTextmode: () => this.textmode.getInstance(),
+			runTextmodeSetup: (callback) => this.textmode.runUserSetup(callback),
 			errorReporter: this.errorReporter,
 			audioReceiver: this.audioReceiver,
 		});
