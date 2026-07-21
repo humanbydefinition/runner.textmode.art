@@ -149,14 +149,13 @@ t.setup(async () => {
 t.createFramebuffer({});
 await t.createMaterialShader('shader');
 onDispose(() => globalThis.__setupTrace.push('manual'));
-return () => globalThis.__setupTrace.push('returned');
 `);
 		(globalThis as typeof globalThis & { __setupTrace: string[] }).__setupTrace = trace;
 		trace.length = 0;
 
 		await context.execute('');
 
-		expect(trace).toEqual(['reset-shader', 'returned', 'manual', 'shader', 'framebuffer']);
+		expect(trace).toEqual(['reset-shader', 'manual', 'shader', 'framebuffer']);
 	});
 
 	it('disposes an async resource that resolves after its execution ended', async () => {

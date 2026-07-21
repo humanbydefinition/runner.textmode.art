@@ -133,12 +133,7 @@ export class ExecutionContext {
         try {
             // Create and execute async function wrapper to support top-level await
             const fn = new Function(...globalKeys, this.wrapUserCode(code));
-            const result = await fn(...globalValues);
-
-            // Preserve the existing returned-dispose callback behavior.
-            if (typeof result === 'function') {
-                resources.defer(result);
-            }
+            await fn(...globalValues);
 
             if (hasSetupCallback && typeof setupCallback !== 'function') {
                 throw new TypeError('t.setup expects a function');
