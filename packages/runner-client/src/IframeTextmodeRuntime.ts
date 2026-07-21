@@ -15,6 +15,7 @@ import {
 	type IframeMountMode,
 	type IframeSandboxToken,
 	type IframeTextmodeRuntimeOptions,
+	type RunnerReconnectOptions,
 } from './options';
 import type { RunnerRuntimeStatus } from './status';
 import { HeartbeatController } from './internal/heartbeat';
@@ -133,7 +134,13 @@ export class IframeTextmodeRuntime {
 	 */
 	async init(container: HTMLElement): Promise<boolean> {
 		this.container = container;
-		this.assertSandboxOriginPolicy();
+		try {
+			this.assertSandboxOriginPolicy();
+		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error);
+			this.handleUnavailable(reason);
+			throw error;
+		}
 
 		if (this.isReady && this.iframe?.isConnected) {
 			return true;
@@ -195,17 +202,18 @@ export class IframeTextmodeRuntime {
 	}
 
 	/**
-	 * Recreates the iframe and reruns the last requested code when available.
+	 * Recreates the iframe and optionally reruns the last requested code.
 	 *
+	 * @param options - Reconnect behavior. The last code is rerun by default.
 	 * @returns `true` when reconnection succeeds.
 	 * @category Runtime
 	 */
-	async reconnect(): Promise<boolean> {
+	async reconnect(options: RunnerReconnectOptions = {}): Promise<boolean> {
 		if (!this.container) {
 			return false;
 		}
 
-		const code = this.lastRequestedCode;
+		const code = options.rerun === false ? null : this.lastRequestedCode;
 		this.setStatus('recovering');
 		this.forceDisposeFrameForReconnect();
 		const initialized = await this.init(this.container);

@@ -17,6 +17,16 @@ export type IframeSandboxToken = 'allow-downloads' | 'allow-same-origin' | 'allo
 export type IframeMountMode = 'append' | 'replace';
 
 /**
+ * Controls how a runner reconnect restores previously requested code.
+ *
+ * @category Options
+ */
+export interface RunnerReconnectOptions {
+	/** Rerun the last requested code after reconnecting. Defaults to `true`. */
+	rerun?: boolean;
+}
+
+/**
  * Default sandbox tokens used by the runner iframe.
  *
  * The default deliberately excludes `allow-downloads`; downloads should be

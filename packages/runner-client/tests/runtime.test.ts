@@ -203,6 +203,24 @@ describe('@textmode/runner-client', () => {
 		).toThrow('Refusing to start sandbox runner with allow-scripts and allow-same-origin on the parent origin');
 	});
 
+	it('reports an unsafe sandbox origin policy as unavailable', async () => {
+		const env = installFakeBrowser();
+		const onUnavailable = vi.fn();
+		const runtime = new IframeTextmodeRuntime({
+			runnerUrl: 'https://editor.textmode.art/',
+			onUnavailable,
+		});
+
+		await expect(runtime.init(env.container as unknown as HTMLElement)).rejects.toThrow(
+			'Refusing to start sandbox runner with allow-scripts and allow-same-origin on the parent origin'
+		);
+		expect(runtime.status).toBe('unavailable');
+		expect(onUnavailable).toHaveBeenCalledWith(
+			'Refusing to start sandbox runner with allow-scripts and allow-same-origin on the parent origin',
+			'unavailable'
+		);
+	});
+
 	it('mounts iframe with replace and append modes', () => {
 		const replaceContainer = new FakeContainer();
 		const appendContainer = new FakeContainer();
@@ -443,6 +461,29 @@ describe('@textmode/runner-client', () => {
 		});
 		const rerunMessage = env.channel.port1.sent.at(-1) as { requestId: string };
 		env.channel.port1.deliver({ type: 'RUN_OK', timestamp: Date.now(), requestId: rerunMessage.requestId });
+		runtime.dispose();
+	});
+
+	it('reconnects without rerunning code when requested by the host', async () => {
+		const { runtime, env } = await connectRuntime();
+
+		const firstRun = runtime.runCode('t.draw(() => {})');
+		const firstRunMessage = env.channel.port1.sent.at(-1) as { requestId: string };
+		env.channel.port1.deliver({ type: 'RUN_OK', timestamp: Date.now(), requestId: firstRunMessage.requestId });
+		await firstRun;
+
+		const reconnect = runtime.reconnect({ rerun: false });
+		const reconnectedIframe = env.createdIframes.at(-1)!;
+		reconnectedIframe.dispatch('load');
+		env.channel.port1.deliver({ type: 'READY', capabilities });
+		await reconnect;
+		await Promise.resolve();
+
+		expect(env.channel.port1.sent).not.toContainEqual(
+			expect.objectContaining({
+				type: 'RUN_CODE',
+			})
+		);
 		runtime.dispose();
 	});
 
