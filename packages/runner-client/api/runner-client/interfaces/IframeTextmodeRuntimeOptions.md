@@ -24,6 +24,7 @@ Options for [IframeTextmodeRuntime](../classes/IframeTextmodeRuntime.md).
 | <a id="property-onrunok"></a> `onRunOk?` | (`message`) => `void` | Called when code execution succeeds. |
 | <a id="property-onrunerror"></a> `onRunError?` | (`error`) => `void` | Called for non-request-scoped runner execution errors. |
 | <a id="property-onsyntherror"></a> `onSynthError?` | (`message`) => `void` | Called when the runner reports a synth parameter error. |
+| <a id="property-onhardreset"></a> `onHardReset?` | () => `void` | Called when the runner requests a fresh host runtime. |
 | <a id="property-ontoggleui"></a> `onToggleUI?` | () => `void` | Called when the runner requests host UI visibility changes. |
 | <a id="property-onuserinteraction"></a> `onUserInteraction?` | () => `void` | Called when the runner reports user interaction. |
 | <a id="property-onunavailable"></a> `onUnavailable?` | (`reason`, `status`) => `void` | Called when the runner becomes unavailable or hung. |

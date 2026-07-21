@@ -1,6 +1,6 @@
 {
     "name": "@textmode/runner-client",
-    "version": "0.2.1",
+    "version": "0.3.0",
     "description": "Browser iframe runtime client for the hosted textmode runner.",
     "license": "AGPL-3.0-or-later",
     "type": "module",
@@ -30,6 +30,6 @@
         "prepare": "npm run build"
     },
     "dependencies": {
-        "@textmode/runner-protocol": "^0.2.0"
+        "@textmode/runner-protocol": "^0.3.0"
     }
 }

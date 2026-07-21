@@ -5,7 +5,7 @@ Browser iframe runtime client for the hosted textmode runner.
 This package gives any browser host app a typed runtime API for mounting the
 runner iframe, performing the current generic protocol handshake, routing
 request/response messages, monitoring heartbeat status, running code,
-soft-resetting sketches, reconnecting, and disposing the transport.
+reconnecting, and disposing the transport.
 
 It does not execute textmode.js sketches directly. It controls a runner app at
 the `runnerUrl` you provide.
@@ -55,7 +55,6 @@ try {
 	}
 }
 
-await runtime.runCode('t.frameCount = 0;', { softReset: true });
 runtime.dispose();
 ```
 
@@ -88,8 +87,7 @@ Typical host apps follow this lifecycle:
 
 1. Create an `IframeTextmodeRuntime` with a trusted `runnerUrl`.
 2. Call `init(container)` from a browser context.
-3. Use `runCode` for normal execution and `runCode(code, { softReset: true })`
-   when the host should reset sketch time before rerunning code.
+3. Use `runCode` to replace the current sketch execution while preserving its timeline.
 4. Call `reconnect` after a recoverable runner failure.
 5. Call `dispose` when the host view is unmounted.
 

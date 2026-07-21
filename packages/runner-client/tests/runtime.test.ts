@@ -238,7 +238,7 @@ describe('@textmode/runner-client', () => {
 		const rejected = registry.register<string>({
 			requestId: 'run_2',
 			kind: 'run',
-			messageType: 'SOFT_RESET',
+			messageType: 'RUN_CODE',
 			timeoutMs: 1000,
 			onTimeout: timeoutHandler,
 		});
@@ -256,7 +256,6 @@ describe('@textmode/runner-client', () => {
 		await expect(timedOut).rejects.toThrow('runner request timed out: RUN_CODE');
 		expect(timeoutHandler).toHaveBeenCalledTimes(1);
 		expect(requestKindForMessage('RUN_CODE')).toBe('run');
-		expect(requestKindForMessage('SOFT_RESET')).toBe('run');
 		expect(requestKindForMessage('PING')).toBe('lifecycle');
 		expect(requestKindForMessage('DISPOSE')).toBe('lifecycle');
 		expect(requestKindForMessage('AUDIO_DATA')).toBe('lifecycle');
@@ -336,7 +335,7 @@ describe('@textmode/runner-client', () => {
 		expect(onUnavailable).toHaveBeenCalledWith('runner does not support heartbeat monitoring', 'unavailable');
 	});
 
-	it('routes run success, soft reset success, and request-scoped run errors', async () => {
+	it('routes run success and request-scoped run errors', async () => {
 		const { runtime, env } = await connectRuntime();
 
 		const ok = runtime.runCode('t.draw(() => {})');
@@ -344,12 +343,6 @@ describe('@textmode/runner-client', () => {
 		expect(runMessage).toMatchObject({ type: 'RUN_CODE', code: 't.draw(() => {})' });
 		env.channel.port1.deliver({ type: 'RUN_OK', timestamp: Date.now(), requestId: runMessage.requestId });
 		await expect(ok).resolves.toBe(true);
-
-		const softReset = runtime.runCode('t.draw(() => {})', { softReset: true });
-		const softResetMessage = env.channel.port1.sent.at(-1) as { requestId: string; type: string };
-		expect(softResetMessage).toMatchObject({ type: 'SOFT_RESET', code: 't.draw(() => {})' });
-		env.channel.port1.deliver({ type: 'RUN_OK', timestamp: Date.now(), requestId: softResetMessage.requestId });
-		await expect(softReset).resolves.toBe(true);
 
 		const failed = runtime.runCode('bad code');
 		const failedMessage = env.channel.port1.sent.at(-1) as { requestId: string };

@@ -239,12 +239,10 @@ export class IframeTextmodeRuntime {
 	 *
 	 * @category Runtime
 	 */
-	async runCode(code: string, options: { softReset?: boolean } = {}): Promise<boolean> {
+	async runCode(code: string): Promise<boolean> {
 		this.lastRequestedCode = code;
 		const requestId = this.createRequestId('run');
-		const message = options.softReset
-			? ({ type: 'SOFT_RESET', requestId, code } as const)
-			: ({ type: 'RUN_CODE', requestId, code } as const);
+		const message = { type: 'RUN_CODE', requestId, code } as const;
 
 		await this.request<RunOkMessage>(message);
 		return true;

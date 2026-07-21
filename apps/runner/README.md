@@ -9,7 +9,7 @@ The runner is served from [runner.textmode.art](https://runner.textmode.art) and
 - Accepts the generic runner handshake from allowed parent origins.
 - Establishes a `MessagePort` transport after `INIT`.
 - Reports runner capabilities through `READY`.
-- Runs sketch code, soft resets, heartbeat pings, UI toggle events, and user interaction events.
+- Runs sketch code, heartbeat pings, UI toggle events, and user interaction events.
 - Keeps `textmode.js`, `textmode.synth.js`, `textmode.figlet.js`, `textmode.filters.js`, and `textmode.export.js` available inside sketches through the sandboxed `t` instance.
 - Redirects top-level production visits back to the configured parent app while still allowing local debug access with `?debug`.
 

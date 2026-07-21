@@ -55,7 +55,6 @@ export function isParentMessage(msg: unknown): msg is ParentToRunnerMessage {
 
 	switch (msg.type) {
 		case 'RUN_CODE':
-		case 'SOFT_RESET':
 			return typeof msg.code === 'string' && isOptionalString(msg.requestId);
 		case 'DISPOSE':
 			return true;

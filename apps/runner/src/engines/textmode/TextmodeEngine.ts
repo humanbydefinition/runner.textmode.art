@@ -55,7 +55,7 @@ export class TextmodeEngine {
 		this.errorReporter = new ErrorReporter((msg) => this.transport.send(msg));
 		this.scheduler = new FrameScheduler({
 			isRendering: () => this.isRendering(),
-			onExecute: (code, isSoftReset, requestId) => this.executeInternal(code, isSoftReset, requestId),
+			onExecute: (code, requestId) => this.executeInternal(code, requestId),
 		});
 
 		this.textmode = new TextmodeManager();
@@ -132,11 +132,7 @@ export class TextmodeEngine {
 		switch (msg.type) {
 			case 'RUN_CODE':
 				this.ensureRuntimeInitialized();
-				this.scheduleCode(msg.code, false, msg.requestId);
-				break;
-			case 'SOFT_RESET':
-				this.ensureRuntimeInitialized();
-				this.scheduleCode(msg.code, true, msg.requestId);
+				this.scheduleCode(msg.code, msg.requestId);
 				break;
 			case 'PING':
 				this.transport.send({ type: 'PONG', nonce: msg.nonce, timestamp: Date.now() });
@@ -150,12 +146,12 @@ export class TextmodeEngine {
 		}
 	};
 
-	private scheduleCode(code: string, isSoftReset: boolean, requestId?: string): void {
-		this.scheduler.schedule({ code, isSoftReset, requestId });
+	private scheduleCode(code: string, requestId?: string): void {
+		this.scheduler.schedule({ code, requestId });
 	}
 
-	private executeInternal(code: string, isSoftReset: boolean, requestId?: string): void {
-		void this.execute(code, isSoftReset, requestId);
+	private executeInternal(code: string, requestId?: string): void {
+		void this.execute(code, requestId);
 	}
 
 	/**
@@ -217,7 +213,7 @@ export class TextmodeEngine {
 	/**
 	 * Execute code in the current sandboxed textmode runtime.
 	 */
-	async execute(code: string, isSoftReset: boolean, requestId?: string): Promise<void> {
+	async execute(code: string, requestId?: string): Promise<void> {
 		this.ensureRuntimeInitialized();
 
 		this.synthErrorReported = false;
@@ -231,7 +227,7 @@ export class TextmodeEngine {
 				return;
 			}
 
-			this.textmode.cleanupLayers(isSoftReset);
+			this.textmode.cleanupLayers();
 
 			const result = await this.context.execute(code);
 
@@ -255,7 +251,7 @@ export class TextmodeEngine {
 		if (!this.lastWorkingCode) return;
 
 		try {
-			this.textmode.cleanupLayers(false);
+			this.textmode.cleanupLayers();
 			const result = await this.context.execute(this.lastWorkingCode);
 			if (!result.success) {
 				console.warn('Failed to restore last working code:', result.error?.message);

@@ -13,6 +13,7 @@ type RunnerToParentMessage =
   | RunOkMessage
   | RunErrorMessage
   | SynthErrorMessage
+  | HardResetMessage
   | ToggleUIMessage
   | UserInteractionMessage
   | PongMessage;

@@ -86,20 +86,20 @@ describe('TextmodeManager', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('preserves frame time during normal cleanup and resets it during soft reset', async () => {
+	it('preserves frame time during execution cleanup', async () => {
 		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
 		const manager = new TextmodeManager();
 
 		manager.init();
-		manager.cleanupLayers(false);
+		manager.cleanupLayers();
 
 		expect(mocks.instance.frameCount).toBe(123);
 		expect(mocks.instance.secs).toBe(4);
 
-		manager.cleanupLayers(true);
+		manager.cleanupLayers();
 
-		expect(mocks.instance.frameCount).toBe(0);
-		expect(mocks.instance.secs).toBe(0);
+		expect(mocks.instance.frameCount).toBe(123);
+		expect(mocks.instance.secs).toBe(4);
 	});
 
 	it('runs the first user setup through textmode setup after grid initialization', async () => {

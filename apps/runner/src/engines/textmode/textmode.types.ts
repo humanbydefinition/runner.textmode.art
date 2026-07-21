@@ -21,7 +21,7 @@ export interface ITextmodeManager {
     /** Resume the animation loop */
     resume(): void;
     /** Clean up layers before new execution */
-    cleanupLayers(isSoftReset: boolean): void;
+    cleanupLayers(): void;
     /** Clear synths on all layers (base + user layers) */
     clearAllSynths(): void;
     /** Set up a handler for synth dynamic parameter errors */
@@ -48,7 +48,6 @@ export interface ValidationResult {
 
 export interface PendingExecution {
 	code: string;
-	isSoftReset: boolean;
 	requestId?: string;
 }
 

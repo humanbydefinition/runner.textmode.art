@@ -174,7 +174,7 @@ export class TextmodeManager implements ITextmodeManager {
     /**
      * Clean up layers before new execution
      */
-    cleanupLayers(isSoftReset: boolean): void {
+    cleanupLayers(): void {
         if (!this.instance) return;
 
         // Reset base layer to default state to prevent property leakage between sketches
@@ -230,15 +230,6 @@ export class TextmodeManager implements ITextmodeManager {
             // Ignore layer clear errors during teardown
         }
 
-        // For soft reset, also reset frame count
-        if (isSoftReset) {
-            try {
-                this.instance.frameCount = 0;
-                this.instance.secs = 0;
-            } catch {
-                // Ignore time reset errors
-            }
-        }
     }
 
     /**

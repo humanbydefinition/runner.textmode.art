@@ -33,7 +33,6 @@ export {
 	type RunErrorMessage,
 	type RunOkMessage,
 	type RunnerToParentMessage,
-	type SoftResetMessage,
 	type SynthErrorMessage,
 	type ToggleUIMessage,
 	type UserInteractionMessage,

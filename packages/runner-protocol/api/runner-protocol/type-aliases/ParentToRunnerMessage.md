@@ -10,9 +10,9 @@ editLink: true
 ```ts
 type ParentToRunnerMessage = 
   | RunCodeMessage
-  | SoftResetMessage
   | DisposeMessage
-  | PingMessage;
+  | PingMessage
+  | AudioDataMessage;
 ```
 
 Messages sent from a host app to the runner after handshake.

@@ -134,19 +134,6 @@ export interface RunCodeMessage {
 }
 
 /**
- * Request to reset frame state and execute code.
- *
- * @category Messages
- */
-export interface SoftResetMessage {
-	type: 'SOFT_RESET';
-	/** Source code to execute after soft reset. */
-	code: string;
-	/** Optional request identifier for result routing. */
-	requestId?: string;
-}
-
-/**
  * Request to dispose the runner runtime.
  *
  * @category Messages
@@ -191,7 +178,6 @@ export interface AudioDataMessage {
  */
 export type ParentToRunnerMessage =
 	| RunCodeMessage
-	| SoftResetMessage
 	| DisposeMessage
 	| PingMessage
 	| AudioDataMessage;

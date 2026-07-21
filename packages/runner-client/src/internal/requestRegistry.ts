@@ -146,7 +146,6 @@ export class RequestRegistry {
 export function requestKindForMessage(type: ParentToRunnerMessage['type']): RequestKind {
 	switch (type) {
 		case 'RUN_CODE':
-		case 'SOFT_RESET':
 			return 'run';
 		case 'PING':
 		case 'DISPOSE':
