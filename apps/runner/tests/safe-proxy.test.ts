@@ -79,4 +79,47 @@ describe('SafeProxyFactory', () => {
 		expect(onSetup).toHaveBeenCalledWith(callback);
 		expect(setup).not.toHaveBeenCalled();
 	});
+
+	it('registers synchronous and asynchronous resources created through textmode factories', async () => {
+		const framebuffer = { dispose: vi.fn() };
+		const texture = { dispose: vi.fn() };
+		const materialShader = { dispose: vi.fn() };
+		const filterShader = { dispose: vi.fn() };
+		const shader = { dispose: vi.fn() };
+		const onResource = vi.fn();
+		const target = {
+			draw: vi.fn(),
+			loadImage: vi.fn(),
+			loadVideo: vi.fn(),
+			loadFont: vi.fn(),
+			createFramebuffer: vi.fn(() => framebuffer),
+			createTexture: vi.fn(() => texture),
+			createMaterialShader: vi.fn(async () => materialShader),
+			createFilterShader: vi.fn(async () => filterShader),
+			createShader: vi.fn(async () => shader),
+			layers: { base: {}, add: vi.fn(), all: [] },
+		};
+		const factory = new SafeProxyFactory({
+			onDrawError: vi.fn(),
+			hasDrawError: () => false,
+		});
+		const proxy = factory.createTextmodeProxy(target as never, {
+			onSetup: vi.fn(),
+			onResource,
+		});
+
+		expect(proxy.createFramebuffer({})).toBe(framebuffer);
+		expect(proxy.createTexture({} as HTMLCanvasElement)).toBe(texture);
+		await expect(proxy.createMaterialShader('material')).resolves.toBe(materialShader);
+		await expect(proxy.createFilterShader('filter')).resolves.toBe(filterShader);
+		await expect(proxy.createShader('vertex', 'fragment')).resolves.toBe(shader);
+
+		expect(onResource.mock.calls.map(([resource]) => resource)).toEqual([
+			framebuffer,
+			texture,
+			materialShader,
+			filterShader,
+			shader,
+		]);
+	});
 });

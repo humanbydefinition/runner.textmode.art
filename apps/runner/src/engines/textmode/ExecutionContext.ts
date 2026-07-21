@@ -18,6 +18,7 @@ import {
     SynthPlugin,
 } from 'textmode.synth.js';
 import type { Textmodifier } from 'textmode.js';
+import { ExecutionResourceStack } from './ExecutionResourceStack';
 
 /**
  * Synth exports to provide to user code
@@ -53,7 +54,7 @@ export interface ExecutionContextOptions {
  * Handles the creation of globals, execution of user code, and cleanup.
  */
 export class ExecutionContext {
-    private userDisposers: Array<() => void> = [];
+    private resources: ExecutionResourceStack | null = null;
     private drawErrorOccurred = false;
     private proxyFactory: SafeProxyFactory;
     private options: ExecutionContextOptions;
@@ -90,6 +91,8 @@ export class ExecutionContext {
 
         // Dispose previous execution
         this.dispose();
+        const resources = new ExecutionResourceStack();
+        this.resources = resources;
 
         // Get textmode and create safe proxy
         const t = this.options.getTextmode();
@@ -101,6 +104,7 @@ export class ExecutionContext {
                       hasSetupCallback = true;
                       setupCallback = callback;
                   },
+                  onResource: (resource) => resources.use(resource),
               })
             : null;
         const audioReceiver = this.options.audioReceiver;
@@ -119,7 +123,7 @@ export class ExecutionContext {
         const globals: Record<string, unknown> = {
             t: safeT,
             audio,
-            onDispose: (callback: unknown) => this.registerUserDispose(callback),
+            onDispose: (callback: unknown) => this.registerUserDispose(resources, callback),
             ...SYNTH_GLOBALS,
         };
 
@@ -133,7 +137,7 @@ export class ExecutionContext {
 
             // Preserve the existing returned-dispose callback behavior.
             if (typeof result === 'function') {
-                this.userDisposers.push(result);
+                resources.defer(result);
             }
 
             if (hasSetupCallback && typeof setupCallback !== 'function') {
@@ -170,26 +174,28 @@ export class ExecutionContext {
         return this.drawErrorOccurred;
     }
 
-    private registerUserDispose(callback: unknown): void {
+    private registerUserDispose(resources: ExecutionResourceStack, callback: unknown): void {
         if (typeof callback !== 'function') {
             throw new TypeError('onDispose expects a function');
         }
 
-        this.userDisposers.push(callback as () => void);
+        resources.defer(callback as () => void);
     }
 
     /**
      * Dispose current execution resources
      */
     dispose(): void {
-        const disposers = this.userDisposers.splice(0).reverse();
+        const resources = this.resources;
+        this.resources = null;
+        if (!resources) return;
 
-        for (const dispose of disposers) {
-            try {
-                dispose();
-            } catch (e) {
-                console.warn('Error in user dispose:', e);
-            }
+        try {
+            this.options.getTextmode()?.resetShader();
+        } catch (error) {
+            console.warn('Error resetting sketch shader during disposal:', error);
         }
+
+        resources.dispose();
     }
 }

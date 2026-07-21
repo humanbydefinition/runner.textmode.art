@@ -8,6 +8,7 @@ const createTextmodeStub = () => ({
 	loadImage: vi.fn(),
 	loadVideo: vi.fn(),
 	loadFont: vi.fn(),
+	resetShader: vi.fn(),
 	setup: vi.fn(),
 	layers: { base: {}, add: vi.fn(), all: [] },
 });
@@ -125,5 +126,86 @@ t.setup(async () => {
 			success: false,
 			error: { message: 't.setup expects a function' },
 		});
+	});
+
+	it('resets the shader and automatically disposes textmode resources before the next execution', async () => {
+		const trace: string[] = [];
+		const framebuffer = { dispose: () => trace.push('framebuffer') };
+		const shader = { dispose: () => trace.push('shader') };
+		const textmode = {
+			...createTextmodeStub(),
+			resetShader: vi.fn(() => trace.push('reset-shader')),
+			createFramebuffer: vi.fn(() => framebuffer),
+			createMaterialShader: vi.fn(async () => shader),
+		};
+		const context = new ExecutionContext({
+			getTextmode: () => textmode as never,
+			runTextmodeSetup: async (callback) => callback?.(),
+			errorReporter: new ErrorReporter(() => {}),
+			audioReceiver: new AudioReceiver(),
+		});
+
+		await context.execute(`
+t.createFramebuffer({});
+await t.createMaterialShader('shader');
+onDispose(() => globalThis.__setupTrace.push('manual'));
+return () => globalThis.__setupTrace.push('returned');
+`);
+		(globalThis as typeof globalThis & { __setupTrace: string[] }).__setupTrace = trace;
+		trace.length = 0;
+
+		await context.execute('');
+
+		expect(trace).toEqual(['reset-shader', 'returned', 'manual', 'shader', 'framebuffer']);
+	});
+
+	it('disposes an async resource that resolves after its execution ended', async () => {
+		let resolveShader!: (shader: { dispose: () => void }) => void;
+		const shaderPromise = new Promise<{ dispose: () => void }>((resolve) => {
+			resolveShader = resolve;
+		});
+		const shader = { dispose: vi.fn() };
+		const textmode = {
+			...createTextmodeStub(),
+			createMaterialShader: vi.fn(() => shaderPromise),
+		};
+		const context = new ExecutionContext({
+			getTextmode: () => textmode as never,
+			runTextmodeSetup: async (callback) => callback?.(),
+			errorReporter: new ErrorReporter(() => {}),
+			audioReceiver: new AudioReceiver(),
+		});
+
+		await context.execute(`void t.createMaterialShader('shader');`);
+		await context.execute('');
+		resolveShader(shader);
+		await shaderPromise;
+		await Promise.resolve();
+
+		expect(shader.dispose).toHaveBeenCalledOnce();
+	});
+
+	it('releases textmode resources created before setup fails', async () => {
+		const framebuffer = { dispose: vi.fn() };
+		const textmode = {
+			...createTextmodeStub(),
+			createFramebuffer: vi.fn(() => framebuffer),
+		};
+		const context = new ExecutionContext({
+			getTextmode: () => textmode as never,
+			runTextmodeSetup: async (callback) => callback?.(),
+			errorReporter: new ErrorReporter(() => {}),
+			audioReceiver: new AudioReceiver(),
+		});
+
+		const result = await context.execute(`
+t.setup(() => {
+  t.createFramebuffer({});
+  throw new Error('setup exploded');
+});
+`);
+
+		expect(result).toMatchObject({ success: false, error: { message: 'setup exploded' } });
+		expect(framebuffer.dispose).toHaveBeenCalledOnce();
 	});
 });

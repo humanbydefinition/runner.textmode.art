@@ -10,7 +10,17 @@ export interface SafeProxyOptions {
 export interface TextmodeProxyExecutionHooks {
     /** Capture the setup callback for this code execution. */
     onSetup: (callback: unknown) => void;
+    /** Register a textmode resource owned by this code execution. */
+    onResource?: (resource: unknown) => void;
 }
+
+const EXECUTION_RESOURCE_FACTORIES = new Set([
+    'createFramebuffer',
+    'createMaterialShader',
+    'createFilterShader',
+    'createShader',
+    'createTexture',
+]);
 
 /**
  * Creates proxies for textmode objects that safely wrap draw callbacks.
@@ -37,6 +47,21 @@ export class SafeProxyFactory {
                     return (callback: unknown): Promise<void> => {
                         hooks.onSetup(callback);
                         return Promise.resolve();
+                    };
+                }
+
+                if (typeof prop === 'string' && EXECUTION_RESOURCE_FACTORIES.has(prop) && typeof value === 'function') {
+                    return (...args: unknown[]) => {
+                        const result = (value as (...factoryArgs: unknown[]) => unknown).apply(target, args);
+                        if (isPromiseLike(result)) {
+                            return Promise.resolve(result).then((resource) => {
+                                hooks?.onResource?.(resource);
+                                return resource;
+                            });
+                        }
+
+                        hooks?.onResource?.(result);
+                        return result;
                     };
                 }
 
@@ -220,4 +245,10 @@ export class SafeProxyFactory {
         return loadPromise;
     }
 
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+    return (
+        (typeof value === 'object' && value !== null) || typeof value === 'function'
+    ) && typeof (value as PromiseLike<unknown>).then === 'function';
 }
