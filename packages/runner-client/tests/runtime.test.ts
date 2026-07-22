@@ -245,7 +245,6 @@ describe('@textmode/runner-client', () => {
 
 		const resolved = registry.register<string>({
 			requestId: 'run_1',
-			kind: 'run',
 			messageType: 'RUN_CODE',
 			timeoutMs: 1000,
 			onTimeout: timeoutHandler,
@@ -255,7 +254,6 @@ describe('@textmode/runner-client', () => {
 
 		const rejected = registry.register<string>({
 			requestId: 'run_2',
-			kind: 'run',
 			messageType: 'RUN_CODE',
 			timeoutMs: 1000,
 			onTimeout: timeoutHandler,
@@ -265,7 +263,6 @@ describe('@textmode/runner-client', () => {
 
 		const timedOut = registry.register<string>({
 			requestId: 'run_3',
-			kind: 'run',
 			messageType: 'RUN_CODE',
 			timeoutMs: 1000,
 			onTimeout: timeoutHandler,

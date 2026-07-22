@@ -406,7 +406,6 @@ export class IframeTextmodeRuntime {
 		const kind = requestKindForMessage(message.type);
 		const promise = this.pending.register<T>({
 			requestId,
-			kind,
 			messageType: message.type,
 			timeoutMs,
 			onTimeout: (error) => {

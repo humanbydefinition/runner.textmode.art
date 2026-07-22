@@ -34,11 +34,4 @@ export class MessagePortTransport<TMessage = unknown> {
 		this.port.close();
 		this.port = null;
 	}
-
-	/**
-	 * Returns true if a MessagePort is currently attached.
-	 */
-	isAttached(): boolean {
-		return Boolean(this.port);
-	}
 }

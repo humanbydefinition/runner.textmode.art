@@ -162,13 +162,6 @@ export class ExecutionContext {
         return `"use strict";\nreturn (async () => {\n${code}\n})();`;
     }
 
-    /**
-     * Check if a draw error has occurred
-     */
-    hasDrawError(): boolean {
-        return this.drawErrorOccurred;
-    }
-
     private registerUserDispose(resources: ExecutionResourceStack, callback: unknown): void {
         if (typeof callback !== 'function') {
             throw new TypeError('onDispose expects a function');

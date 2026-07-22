@@ -52,10 +52,6 @@ export class TextmodeManager implements ITextmodeManager {
         return this.instance;
     }
 
-    isInitialized(): boolean {
-        return this.instance !== null;
-    }
-
     /**
      * Initialize textmode and attach to DOM
      */
