@@ -15,6 +15,7 @@ import {
 } from '@textmode/runner-protocol';
 
 import { HandshakeHandler } from '@/core/transport/HandshakeHandler';
+import { UserActivationPrompt } from '@/core/user-activation/UserActivationPrompt';
 import { getRunnerShortcut } from './shortcuts';
 
 /**
@@ -39,10 +40,20 @@ export class TextmodeEngine {
 	private rejectionHandler: ((event: PromiseRejectionEvent) => void) | null = null;
 	private runtimeInitialized = false;
 	private runtimeEventHandlersAttached = false;
-	private readonly handleUserInteraction = (): void => {
+	private userInteractionReported = false;
+	private readonly userActivationPrompt = new UserActivationPrompt();
+	private readonly handleUserInteraction = (event: Event): void => {
+		if (!event.isTrusted || this.userInteractionReported) return;
+
+		this.userInteractionReported = true;
+		this.userActivationPrompt.dismiss();
 		this.transport.send({ type: 'USER_INTERACTION' });
 	};
 	private readonly handleKeyDown = (event: KeyboardEvent): void => {
+		if (event.key !== 'Escape') {
+			this.handleUserInteraction(event);
+		}
+
 		const shortcut = getRunnerShortcut(event);
 		if (!shortcut) return;
 
@@ -65,6 +76,9 @@ export class TextmodeEngine {
 		this.handshakeHandler = new HandshakeHandler({
 			isAllowedOrigin: (origin) => this.isAllowedOrigin(origin),
 			isInitMessage: (data) => isInitMessage(data),
+			onOriginEstablished: (origin) => {
+				this.userActivationPrompt.show(origin);
+			},
 			onPortExtracted: (port) => {
 				this.transport.attach(port, this.handlePortMessage as (event: MessageEvent) => void);
 			},
@@ -75,6 +89,9 @@ export class TextmodeEngine {
 					type: 'READY',
 					capabilities: this.getCapabilities(),
 				});
+				if (this.userActivationPrompt.isVisible) {
+					this.transport.send({ type: 'USER_ACTIVATION_REQUIRED' });
+				}
 			},
 		});
 	}
@@ -92,6 +109,7 @@ export class TextmodeEngine {
 		if (this.hasStarted) return;
 		this.hasStarted = true;
 		this.setupGlobalErrorHandlers((error) => this.errorReporter.report(error as Error | string | Event));
+		this.attachRuntimeEventHandlers();
 		window.addEventListener('message', this.handleInitMessage);
 	}
 
@@ -182,7 +200,7 @@ export class TextmodeEngine {
 		if (this.runtimeEventHandlersAttached) return;
 
 		this.runtimeEventHandlersAttached = true;
-		window.addEventListener('pointerdown', this.handleUserInteraction, { passive: true });
+		window.addEventListener('click', this.handleUserInteraction, { capture: true, passive: true });
 		window.addEventListener('keydown', this.handleKeyDown);
 	}
 
@@ -226,9 +244,11 @@ export class TextmodeEngine {
 		this.runtimeInitialized = false;
 		this.runtimeEventHandlersAttached = false;
 		this.synthErrorReported = false;
+		this.userInteractionReported = false;
+		this.userActivationPrompt.dispose();
 
 		window.removeEventListener('message', this.handleInitMessage);
-		window.removeEventListener('pointerdown', this.handleUserInteraction);
+		window.removeEventListener('click', this.handleUserInteraction, true);
 		window.removeEventListener('keydown', this.handleKeyDown);
 
 		this.teardownGlobalErrorHandlers();

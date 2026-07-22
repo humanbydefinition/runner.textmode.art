@@ -164,4 +164,31 @@ describe('TextmodeEngine execution recovery', () => {
 			requestId: 'reset_1',
 		});
 	});
+
+	it('reports only the first trusted interaction and ignores synthetic events', () => {
+		vi.stubGlobal('window', {
+			innerWidth: 800,
+			innerHeight: 600,
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+		});
+		const engine = new TextmodeEngine(new Set(['*']));
+		const send = vi.fn();
+		const dismiss = vi.fn();
+		const internals = engine as unknown as {
+			handleUserInteraction: (event: Event) => void;
+			transport: { send: typeof send };
+			userActivationPrompt: { dismiss: typeof dismiss };
+		};
+		internals.transport = { send };
+		internals.userActivationPrompt = { dismiss };
+
+		internals.handleUserInteraction({ isTrusted: false } as Event);
+		internals.handleUserInteraction({ isTrusted: true } as Event);
+		internals.handleUserInteraction({ isTrusted: true } as Event);
+
+		expect(dismiss).toHaveBeenCalledOnce();
+		expect(send).toHaveBeenCalledOnce();
+		expect(send).toHaveBeenCalledWith({ type: 'USER_INTERACTION' });
+	});
 });
