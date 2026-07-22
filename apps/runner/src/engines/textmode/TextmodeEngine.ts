@@ -55,17 +55,12 @@ export class TextmodeEngine {
 		this.errorReporter = new ErrorReporter((msg) => this.transport.send(msg));
 		this.scheduler = new FrameScheduler({
 			isRendering: () => this.isRendering(),
-			onExecute: (code, requestId) => this.executeInternal(code, requestId),
+			onExecute: (execution) => this.executeInternal(execution),
 		});
 
 		this.textmode = new TextmodeManager();
 		this.audioReceiver = new AudioReceiver();
-		this.context = new ExecutionContext({
-			getTextmode: () => this.textmode.getInstance(),
-			runTextmodeSetup: (callback) => this.textmode.runUserSetup(callback),
-			errorReporter: this.errorReporter,
-			audioReceiver: this.audioReceiver,
-		});
+		this.context = this.createExecutionContext();
 
 		this.handshakeHandler = new HandshakeHandler({
 			isAllowedOrigin: (origin) => this.isAllowedOrigin(origin),
@@ -81,6 +76,15 @@ export class TextmodeEngine {
 					capabilities: this.getCapabilities(),
 				});
 			},
+		});
+	}
+
+	private createExecutionContext(): ExecutionContext {
+		return new ExecutionContext({
+			getTextmode: () => this.textmode.getInstance(),
+			runTextmodeSetup: (callback) => this.textmode.runUserSetup(callback),
+			errorReporter: this.errorReporter,
+			audioReceiver: this.audioReceiver,
 		});
 	}
 
@@ -132,7 +136,10 @@ export class TextmodeEngine {
 		switch (msg.type) {
 			case 'RUN_CODE':
 				this.ensureRuntimeInitialized();
-				this.scheduleCode(msg.code, msg.requestId);
+				this.scheduleCode(msg.code, 'run', msg.requestId);
+				break;
+			case 'RESET_RUNTIME':
+				this.scheduleCode(msg.code, 'reset-runtime', msg.requestId);
 				break;
 			case 'PING':
 				this.transport.send({ type: 'PONG', nonce: msg.nonce, timestamp: Date.now() });
@@ -146,12 +153,16 @@ export class TextmodeEngine {
 		}
 	};
 
-	private scheduleCode(code: string, requestId?: string): void {
-		this.scheduler.schedule({ code, requestId });
+	private scheduleCode(code: string, mode: 'run' | 'reset-runtime', requestId?: string): void {
+		this.scheduler.schedule({ code, mode, requestId });
 	}
 
-	private executeInternal(code: string, requestId?: string): void {
-		void this.execute(code, requestId);
+	private executeInternal(execution: { code: string; mode: 'run' | 'reset-runtime'; requestId?: string }): void {
+		const operation =
+			execution.mode === 'reset-runtime'
+				? this.resetRuntime(execution.code, execution.requestId)
+				: this.execute(execution.code, execution.requestId);
+		void operation.catch((error) => this.errorReporter.report(error as Error, execution.requestId));
 	}
 
 	/**
@@ -164,6 +175,7 @@ export class TextmodeEngine {
 		this.textmode.init();
 		this.runtimeInitialized = true;
 		this.attachRuntimeEventHandlers();
+		this.setupSynthErrorHandler();
 	}
 
 	private attachRuntimeEventHandlers(): void {
@@ -172,7 +184,9 @@ export class TextmodeEngine {
 		this.runtimeEventHandlersAttached = true;
 		window.addEventListener('pointerdown', this.handleUserInteraction, { passive: true });
 		window.addEventListener('keydown', this.handleKeyDown);
+	}
 
+	private setupSynthErrorHandler(): void {
 		this.textmode.setupSynthErrorHandler((error) => {
 			if (!this.synthErrorReported) {
 				this.synthErrorReported = true;
@@ -182,6 +196,24 @@ export class TextmodeEngine {
 				});
 			}
 		});
+	}
+
+	/**
+	 * Rebuild the complete sketch runtime while preserving this iframe document
+	 * and its established MessagePort connection.
+	 */
+	async resetRuntime(code: string, requestId?: string): Promise<void> {
+		this.context.dispose();
+		this.textmode.dispose();
+
+		this.textmode = new TextmodeManager();
+		this.audioReceiver = new AudioReceiver();
+		this.context = this.createExecutionContext();
+		this.runtimeInitialized = false;
+		this.lastWorkingCode = null;
+		this.synthErrorReported = false;
+
+		await this.execute(code, requestId);
 	}
 
 	dispose(): void {

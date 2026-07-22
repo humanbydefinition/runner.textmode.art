@@ -48,6 +48,7 @@ export interface ValidationResult {
 
 export interface PendingExecution {
 	code: string;
+	mode: 'run' | 'reset-runtime';
 	requestId?: string;
 }
 

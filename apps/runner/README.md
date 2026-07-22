@@ -10,6 +10,7 @@ The runner is served from [runner.textmode.art](https://runner.textmode.art) and
 - Establishes a `MessagePort` transport after `INIT`.
 - Reports runner capabilities through `READY`.
 - Runs sketch code, heartbeat pings, UI toggle events, and user interaction events.
+- Rebuilds the complete sketch runtime on request without replacing the iframe document or MessagePort.
 - Keeps `textmode.js`, `textmode.synth.js`, `textmode.figlet.js`, `textmode.filters.js`, and `textmode.export.js` available inside sketches through the sandboxed `t` instance.
 - Redirects top-level production visits back to the configured parent app while still allowing local debug access with `?debug`.
 

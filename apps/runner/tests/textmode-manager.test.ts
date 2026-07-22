@@ -163,4 +163,17 @@ describe('TextmodeManager', () => {
 
 		await expect(initializing).resolves.toBeUndefined();
 	});
+
+	it('can create a fresh textmode instance after disposal', async () => {
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+
+		manager.init();
+		manager.dispose();
+		manager.init();
+
+		expect(mocks.textmodeCreate).toHaveBeenCalledTimes(2);
+		expect(mocks.instance.destroy).toHaveBeenCalledOnce();
+		expect(document.body.appendChild).toHaveBeenCalledTimes(2);
+	});
 });

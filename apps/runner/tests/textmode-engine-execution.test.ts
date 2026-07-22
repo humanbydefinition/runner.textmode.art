@@ -99,4 +99,69 @@ describe('TextmodeEngine execution recovery', () => {
 		expect(cleanupLayers).toHaveBeenCalledOnce();
 		expect(report).toHaveBeenCalledWith(expect.any(SyntaxError), undefined);
 	});
+
+	it('rebuilds managed runtime resources without disposing the iframe engine', async () => {
+		vi.stubGlobal('window', {
+			innerWidth: 800,
+			innerHeight: 600,
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+		});
+		const engine = new TextmodeEngine(new Set(['*']));
+		const oldContext = { dispose: vi.fn() };
+		const oldTextmode = { dispose: vi.fn() };
+		const execute = vi.fn().mockResolvedValue(undefined);
+		const internals = engine as unknown as {
+			audioReceiver: object;
+			context: typeof oldContext;
+			execute: typeof execute;
+			lastWorkingCode: string | null;
+			runtimeEventHandlersAttached: boolean;
+			textmode: typeof oldTextmode;
+		};
+		const oldAudioReceiver = internals.audioReceiver;
+		internals.context = oldContext;
+		internals.textmode = oldTextmode;
+		internals.execute = execute;
+		internals.lastWorkingCode = 'previous sketch';
+		internals.runtimeEventHandlersAttached = true;
+
+		await engine.resetRuntime('fresh sketch', 'reset_1');
+
+		expect(oldContext.dispose).toHaveBeenCalledOnce();
+		expect(oldTextmode.dispose).toHaveBeenCalledOnce();
+		expect(internals.context).not.toBe(oldContext);
+		expect(internals.textmode).not.toBe(oldTextmode);
+		expect(internals.audioReceiver).not.toBe(oldAudioReceiver);
+		expect(internals.lastWorkingCode).toBeNull();
+		expect(internals.runtimeEventHandlersAttached).toBe(true);
+		expect(execute).toHaveBeenCalledWith('fresh sketch', 'reset_1');
+		expect(window.addEventListener).not.toHaveBeenCalled();
+	});
+
+	it('routes reset protocol messages through the safe-frame scheduler', () => {
+		vi.stubGlobal('window', {
+			innerWidth: 800,
+			innerHeight: 600,
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+		});
+		const engine = new TextmodeEngine(new Set(['*']));
+		const schedule = vi.fn();
+		const internals = engine as unknown as {
+			handlePortMessage: (event: MessageEvent) => void;
+			scheduler: { schedule: typeof schedule };
+		};
+		internals.scheduler = { schedule };
+
+		internals.handlePortMessage({
+			data: { type: 'RESET_RUNTIME', requestId: 'reset_1', code: 'fresh sketch' },
+		} as MessageEvent);
+
+		expect(schedule).toHaveBeenCalledWith({
+			code: 'fresh sketch',
+			mode: 'reset-runtime',
+			requestId: 'reset_1',
+		});
+	});
 });

@@ -3,8 +3,8 @@ import type { IFrameScheduler, PendingExecution } from './textmode.types';
 export interface FrameSchedulerOptions {
     /** Callback to check if currently rendering */
     isRendering: () => boolean;
-    /** Callback to execute the code */
-    onExecute: (code: string, requestId?: string) => void | Promise<void>;
+    /** Callback to execute the pending command. */
+    onExecute: (execution: PendingExecution) => void | Promise<void>;
     /** Fallback delay for browsers that pause requestAnimationFrame. */
     fallbackDelayMs?: number;
 }
@@ -90,9 +90,9 @@ export class FrameScheduler implements IFrameScheduler {
             return;
         }
 
-        const { code, requestId } = this.pendingExecution;
+        const execution = this.pendingExecution;
         this.pendingExecution = null;
-        this.options.onExecute(code, requestId);
+        this.options.onExecute(execution);
     }
 
     private clearScheduledCallbacks(): void {
