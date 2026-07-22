@@ -134,6 +134,19 @@ export interface RunCodeMessage {
 }
 
 /**
+ * Request to rebuild the textmode runtime inside the existing iframe document.
+ *
+ * @category Messages
+ */
+export interface ResetRuntimeMessage {
+	type: 'RESET_RUNTIME';
+	/** Source code to execute in the fresh textmode runtime. */
+	code: string;
+	/** Request identifier used for result routing. */
+	requestId: string;
+}
+
+/**
  * Request to dispose the runner runtime.
  *
  * @category Messages
@@ -178,6 +191,7 @@ export interface AudioDataMessage {
  */
 export type ParentToRunnerMessage =
 	| RunCodeMessage
+	| ResetRuntimeMessage
 	| DisposeMessage
 	| PingMessage
 	| AudioDataMessage;

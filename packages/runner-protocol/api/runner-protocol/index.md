@@ -44,6 +44,7 @@ message shape. Feature availability is advertised through capabilities.
 | [PongMessage](interfaces/PongMessage.md) | Heartbeat response from the runner. |
 | [RunnerToParentMessage](type-aliases/RunnerToParentMessage.md) | Messages sent from the runner iframe to a host app. |
 | [RunCodeMessage](interfaces/RunCodeMessage.md) | Request to execute code in the runner. |
+| [ResetRuntimeMessage](interfaces/ResetRuntimeMessage.md) | Request to rebuild the textmode runtime inside the existing iframe document. |
 | [DisposeMessage](interfaces/DisposeMessage.md) | Request to dispose the runner runtime. |
 | [PingMessage](interfaces/PingMessage.md) | Heartbeat request sent by a host app. |
 | [AudioDataMessage](interfaces/AudioDataMessage.md) | Fire-and-forget audio analysis frame sent by a host app. |

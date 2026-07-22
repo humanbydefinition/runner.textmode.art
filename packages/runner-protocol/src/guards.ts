@@ -56,6 +56,8 @@ export function isParentMessage(msg: unknown): msg is ParentToRunnerMessage {
 	switch (msg.type) {
 		case 'RUN_CODE':
 			return typeof msg.code === 'string' && isOptionalString(msg.requestId);
+		case 'RESET_RUNTIME':
+			return typeof msg.code === 'string' && typeof msg.requestId === 'string';
 		case 'DISPOSE':
 			return true;
 		case 'PING':
@@ -92,6 +94,7 @@ export function isRunnerCapabilities(value: unknown): value is RunnerCapabilitie
 
 	return (
 		typeof value.heartbeat === 'boolean' &&
+		(value.runtimeReset === undefined || typeof value.runtimeReset === 'boolean') &&
 		!('runtimeConfig' in value) &&
 		!('exports' in value) &&
 		!('fonts' in value) &&

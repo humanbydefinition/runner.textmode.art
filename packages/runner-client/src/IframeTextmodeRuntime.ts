@@ -257,6 +257,26 @@ export class IframeTextmodeRuntime {
 	}
 
 	/**
+	 * Rebuilds the textmode runtime while preserving the current iframe document.
+	 *
+	 * Older runners fall back to a full reconnect followed by one code execution.
+	 *
+	 * @category Runtime
+	 */
+	async resetRuntime(code: string): Promise<boolean> {
+		this.lastRequestedCode = code;
+
+		if (this.capabilities?.runtimeReset !== true) {
+			const reconnected = await this.reconnect({ rerun: false });
+			return reconnected ? this.runCode(code) : false;
+		}
+
+		const requestId = this.createRequestId('reset');
+		await this.request<RunOkMessage>({ type: 'RESET_RUNTIME', requestId, code });
+		return true;
+	}
+
+	/**
 	 * Sends a fire-and-forget audio analysis frame to the runner.
 	 *
 	 * Audio frames are intentionally not request-tracked: hosts may send them at

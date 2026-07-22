@@ -88,8 +88,11 @@ Typical host apps follow this lifecycle:
 1. Create an `IframeTextmodeRuntime` with a trusted `runnerUrl`.
 2. Call `init(container)` from a browser context.
 3. Use `runCode` to replace the current sketch execution while preserving its timeline.
-4. Call `reconnect` after a recoverable runner failure.
-5. Call `dispose` when the host view is unmounted.
+4. Use `resetRuntime` to rebuild textmode while preserving the current iframe document and its browser interaction state.
+5. Call `reconnect` only when the iframe document or transport must be replaced.
+6. Call `dispose` when the host view is unmounted.
+
+`resetRuntime` falls back to reconnecting when an older runner does not advertise the optional `runtimeReset` capability.
 
 The runtime exposes `status`, `isReady`, and `frame` getters for host UI state.
 

@@ -10,6 +10,7 @@ editLink: true
 ```ts
 type ParentToRunnerMessage = 
   | RunCodeMessage
+  | ResetRuntimeMessage
   | DisposeMessage
   | PingMessage
   | AudioDataMessage;

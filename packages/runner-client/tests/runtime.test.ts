@@ -274,6 +274,7 @@ describe('@textmode/runner-client', () => {
 		await expect(timedOut).rejects.toThrow('runner request timed out: RUN_CODE');
 		expect(timeoutHandler).toHaveBeenCalledTimes(1);
 		expect(requestKindForMessage('RUN_CODE')).toBe('run');
+		expect(requestKindForMessage('RESET_RUNTIME')).toBe('lifecycle');
 		expect(requestKindForMessage('PING')).toBe('lifecycle');
 		expect(requestKindForMessage('DISPOSE')).toBe('lifecycle');
 		expect(requestKindForMessage('AUDIO_DATA')).toBe('lifecycle');
@@ -374,6 +375,66 @@ describe('@textmode/runner-client', () => {
 		await expect(failed).rejects.toBeInstanceOf(RunnerRequestError);
 		await expect(failed).rejects.toMatchObject({ line: 4, column: 2 });
 		runtime.dispose();
+	});
+
+	it('resets the runtime without replacing the activated iframe document', async () => {
+		const { runtime, env } = await connectRuntime();
+		const originalFrame = runtime.frame;
+		const originalWindow = env.iframe.contentWindow;
+		const originalIframeCount = env.createdIframes.length;
+
+		const reset = runtime.resetRuntime('t.draw(() => {})');
+		const resetMessage = env.channel.port1.sent.at(-1) as { requestId: string };
+
+		expect(resetMessage).toMatchObject({
+			type: 'RESET_RUNTIME',
+			code: 't.draw(() => {})',
+		});
+		expect(runtime.frame).toBe(originalFrame);
+		expect(env.iframe.contentWindow).toBe(originalWindow);
+		expect(env.createdIframes).toHaveLength(originalIframeCount);
+		expect(originalWindow.postMessage).toHaveBeenCalledTimes(1);
+
+		env.channel.port1.deliver({ type: 'RUN_OK', timestamp: Date.now(), requestId: resetMessage.requestId });
+		await expect(reset).resolves.toBe(true);
+		runtime.dispose();
+	});
+
+	it('falls back to reconnecting when the runner cannot reset in place', async () => {
+		const env = installFakeBrowser();
+		const runtime = new IframeTextmodeRuntime({ runnerUrl: 'https://runner.textmode.art/' });
+		const ready = runtime.init(env.container as unknown as HTMLElement);
+		env.iframe.dispatch('load');
+		env.channel.port1.deliver({ type: 'READY', capabilities: { heartbeat: true } });
+		await ready;
+		const originalFrame = runtime.frame;
+
+		const reset = runtime.resetRuntime('legacy runner sketch');
+		const replacementFrame = env.createdIframes.at(-1)!;
+		expect(replacementFrame).not.toBe(originalFrame);
+		replacementFrame.dispatch('load');
+		env.channel.port1.deliver({ type: 'READY', capabilities: { heartbeat: true } });
+		for (let turn = 0; turn < 4; turn++) await Promise.resolve();
+
+		const runMessage = env.channel.port1.sent.at(-1) as { requestId: string };
+		expect(runMessage).toMatchObject({ type: 'RUN_CODE', code: 'legacy runner sketch' });
+		env.channel.port1.deliver({ type: 'RUN_OK', timestamp: Date.now(), requestId: runMessage.requestId });
+		await expect(reset).resolves.toBe(true);
+		runtime.dispose();
+	});
+
+	it('marks a timed-out runtime reset unavailable', async () => {
+		const onUnavailable = vi.fn();
+		const { runtime } = await connectRuntime({ requestTimeoutMs: 100, onUnavailable });
+
+		const reset = runtime.resetRuntime('hung reset');
+		const rejected = expect(reset).rejects.toThrow('runner request timed out: RESET_RUNTIME');
+		vi.advanceTimersByTime(101);
+
+		await rejected;
+		expect(runtime.status).toBe('unavailable');
+		expect(runtime.frame).toBeNull();
+		expect(onUnavailable).toHaveBeenCalledWith('runner request timed out: RESET_RUNTIME', 'unavailable');
 	});
 
 	it('sends audio data only when ready without registering a pending request', async () => {

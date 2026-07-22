@@ -147,6 +147,8 @@ export function requestKindForMessage(type: ParentToRunnerMessage['type']): Requ
 	switch (type) {
 		case 'RUN_CODE':
 			return 'run';
+		case 'RESET_RUNTIME':
+			return 'lifecycle';
 		case 'PING':
 		case 'DISPOSE':
 		case 'AUDIO_DATA':

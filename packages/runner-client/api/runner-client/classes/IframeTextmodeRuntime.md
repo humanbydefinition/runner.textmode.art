@@ -148,10 +148,16 @@ Disposes the iframe connection and rejects pending requests.
 ### reconnect()
 
 ```ts
-reconnect(): Promise<boolean>;
+reconnect(options?): Promise<boolean>;
 ```
 
-Recreates the iframe and reruns the last requested code when available.
+Recreates the iframe and optionally reruns the last requested code.
+
+#### Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `options` | [`RunnerReconnectOptions`](../interfaces/RunnerReconnectOptions.md) | Reconnect behavior. The last code is rerun by default. |
 
 #### Returns
 
@@ -184,6 +190,28 @@ runCode(code): Promise<boolean>;
 ```
 
 Executes code in the runner.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `code` | `string` |
+
+#### Returns
+
+`Promise`\<`boolean`\>
+
+***
+
+### resetRuntime()
+
+```ts
+resetRuntime(code): Promise<boolean>;
+```
+
+Rebuilds the textmode runtime while preserving the current iframe document.
+
+Older runners fall back to a full reconnect followed by one code execution.
 
 #### Parameters
 

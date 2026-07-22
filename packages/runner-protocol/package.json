@@ -1,6 +1,6 @@
 {
     "name": "@textmode/runner-protocol",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "Shared message protocol and validators for the hosted textmode runner iframe.",
     "license": "CC0-1.0",
     "type": "module",

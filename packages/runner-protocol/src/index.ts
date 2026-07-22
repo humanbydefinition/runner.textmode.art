@@ -29,6 +29,7 @@ export {
 	type PingMessage,
 	type PongMessage,
 	type ReadyMessage,
+	type ResetRuntimeMessage,
 	type RunCodeMessage,
 	type RunErrorMessage,
 	type RunOkMessage,
