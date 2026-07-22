@@ -1,4 +1,4 @@
-import type { IFrameScheduler, PendingExecution } from './textmode.types';
+import type { PendingExecution } from './textmode.types';
 
 export interface FrameSchedulerOptions {
     /** Callback to check if currently rendering */
@@ -12,7 +12,7 @@ export interface FrameSchedulerOptions {
 /**
  * Schedules code execution at safe frame boundaries
  */
-export class FrameScheduler implements IFrameScheduler {
+export class FrameScheduler {
     private pendingExecution: PendingExecution | null = null;
     private executionGeneration = 0;
     private options: FrameSchedulerOptions;

@@ -4,7 +4,7 @@ import { createTextmodeExportPlugin } from 'textmode.export.js';
 import { FigletPlugin } from 'textmode.figlet.js';
 import { SynthPlugin, setGlobalErrorCallback } from 'textmode.synth.js';
 import { FiltersPlugin } from 'textmode.filters.js';
-import type { ITextmodeManager, SynthLayer } from './textmode.types';
+import type { SynthLayer } from './textmode.types';
 
 type TextmodeSettings = {
     width: number;
@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS: Omit<TextmodeSettings, 'width' | 'height'> = {
  * TextmodeManager - manages the textmode.js instance lifecycle.
  * Handles initialization, resize, layer cleanup, and loop control.
  */
-export class TextmodeManager implements ITextmodeManager {
+export class TextmodeManager {
     private instance: Textmodifier | null = null;
     private initialSetupComplete = false;
     private initialSetupRequest: InitialSetupRequest | null = null;
