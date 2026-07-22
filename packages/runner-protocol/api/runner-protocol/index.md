@@ -41,6 +41,7 @@ message shape. Feature availability is advertised through capabilities.
 | [ToggleUIMessage](interfaces/ToggleUIMessage.md) | Runner-originated shortcut event requesting host UI visibility changes. |
 | [HardResetMessage](interfaces/HardResetMessage.md) | Runner-originated shortcut event requesting a fresh host runtime. |
 | [UserInteractionMessage](interfaces/UserInteractionMessage.md) | Runner-originated user interaction event. |
+| [UserActivationRequiredMessage](interfaces/UserActivationRequiredMessage.md) | Runner request for a trusted interaction inside its cross-origin document. |
 | [PongMessage](interfaces/PongMessage.md) | Heartbeat response from the runner. |
 | [RunnerToParentMessage](type-aliases/RunnerToParentMessage.md) | Messages sent from the runner iframe to a host app. |
 | [RunCodeMessage](interfaces/RunCodeMessage.md) | Request to execute code in the runner. |

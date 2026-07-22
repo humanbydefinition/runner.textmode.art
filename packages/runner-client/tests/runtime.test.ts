@@ -467,17 +467,26 @@ describe('@textmode/runner-client', () => {
 		const onHardReset = vi.fn();
 		const onSynthError = vi.fn();
 		const onToggleUI = vi.fn();
+		const onUserActivationRequired = vi.fn();
 		const onUserInteraction = vi.fn();
-		const { runtime, env } = await connectRuntime({ onHardReset, onSynthError, onToggleUI, onUserInteraction });
+		const { runtime, env } = await connectRuntime({
+			onHardReset,
+			onSynthError,
+			onToggleUI,
+			onUserActivationRequired,
+			onUserInteraction,
+		});
 
 		env.channel.port1.deliver({ type: 'SYNTH_ERROR', message: 'bad uniform' });
 		env.channel.port1.deliver({ type: 'HARD_RESET' });
 		env.channel.port1.deliver({ type: 'TOGGLE_UI' });
+		env.channel.port1.deliver({ type: 'USER_ACTIVATION_REQUIRED' });
 		env.channel.port1.deliver({ type: 'USER_INTERACTION' });
 
 		expect(onHardReset).toHaveBeenCalledTimes(1);
 		expect(onSynthError).toHaveBeenCalledWith('bad uniform');
 		expect(onToggleUI).toHaveBeenCalledTimes(1);
+		expect(onUserActivationRequired).toHaveBeenCalledTimes(1);
 		expect(onUserInteraction).toHaveBeenCalledTimes(1);
 
 		vi.advanceTimersByTime(1000);

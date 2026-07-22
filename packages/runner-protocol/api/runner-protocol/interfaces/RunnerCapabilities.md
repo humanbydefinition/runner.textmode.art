@@ -19,3 +19,4 @@ sandboxed runtime, not the parent iframe protocol.
 | ------ | ------ | ------ |
 | <a id="property-heartbeat"></a> `heartbeat` | `boolean` | Whether the runner responds to heartbeat pings. |
 | <a id="property-runtimereset"></a> `runtimeReset?` | `boolean` | Whether the runner can rebuild its textmode runtime without replacing the iframe document. |
+| <a id="property-useractivationprompt"></a> `userActivationPrompt?` | `boolean` | Whether the runner can request a trusted user interaction inside its iframe. |

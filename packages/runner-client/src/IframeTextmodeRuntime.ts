@@ -336,6 +336,9 @@ export class IframeTextmodeRuntime {
 			onToggleUI: () => {
 				this.options.onToggleUI?.();
 			},
+			onUserActivationRequired: () => {
+				this.options.onUserActivationRequired?.();
+			},
 			onUserInteraction: () => {
 				this.options.onUserInteraction?.();
 			},

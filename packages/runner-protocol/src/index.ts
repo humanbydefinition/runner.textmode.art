@@ -36,6 +36,7 @@ export {
 	type RunnerToParentMessage,
 	type SynthErrorMessage,
 	type ToggleUIMessage,
+	type UserActivationRequiredMessage,
 	type UserInteractionMessage,
 	type WindowToRunnerMessage,
 } from './messages';

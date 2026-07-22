@@ -15,6 +15,7 @@ type RunnerToParentMessage =
   | SynthErrorMessage
   | HardResetMessage
   | ToggleUIMessage
+  | UserActivationRequiredMessage
   | UserInteractionMessage
   | PongMessage;
 ```

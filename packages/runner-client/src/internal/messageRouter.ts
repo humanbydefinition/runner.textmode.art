@@ -14,6 +14,7 @@ export interface RunnerMessageHandlers {
 	onSynthError: (message: SynthErrorMessage) => void;
 	onHardReset: () => void;
 	onToggleUI: () => void;
+	onUserActivationRequired: () => void;
 	onUserInteraction: () => void;
 	onPong: (message: PongMessage) => void;
 }
@@ -41,6 +42,9 @@ export function routeRunnerMessage(message: unknown, handlers: RunnerMessageHand
 			break;
 		case 'TOGGLE_UI':
 			handlers.onToggleUI();
+			break;
+		case 'USER_ACTIVATION_REQUIRED':
+			handlers.onUserActivationRequired();
 			break;
 		case 'USER_INTERACTION':
 			handlers.onUserInteraction();

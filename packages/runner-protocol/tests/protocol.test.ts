@@ -45,8 +45,11 @@ describe('@textmode/runner-protocol', () => {
 		expect(capabilities).toEqual({
 			heartbeat: true,
 			runtimeReset: true,
+			userActivationPrompt: true,
 		});
 		expect(isRunnerCapabilities({ heartbeat: true })).toBe(true);
+		expect(isRunnerCapabilities({ heartbeat: true, userActivationPrompt: false })).toBe(true);
+		expect(isRunnerCapabilities({ heartbeat: true, userActivationPrompt: 'yes' })).toBe(false);
 	});
 
 	it('rejects removed editor capabilities', () => {
@@ -184,6 +187,7 @@ describe('@textmode/runner-protocol', () => {
 		expect(isRunnerMessage({ type: 'SYNTH_ERROR', message: 'bad uniform', uniformName: 'uTime' })).toBe(true);
 		expect(isRunnerMessage({ type: 'HARD_RESET' })).toBe(true);
 		expect(isRunnerMessage({ type: 'TOGGLE_UI' })).toBe(true);
+		expect(isRunnerMessage({ type: 'USER_ACTIVATION_REQUIRED' })).toBe(true);
 		expect(isRunnerMessage({ type: 'USER_INTERACTION' })).toBe(true);
 		expect(isRunnerMessage({ type: 'PONG', nonce: 'heartbeat_1', timestamp: Date.now() })).toBe(true);
 	});

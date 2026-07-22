@@ -24,6 +24,7 @@ export function isRunnerMessage(msg: unknown): msg is RunnerToParentMessage {
 			return !('v' in msg) && isRunnerCapabilities(msg.capabilities);
 		case 'HARD_RESET':
 		case 'TOGGLE_UI':
+		case 'USER_ACTIVATION_REQUIRED':
 		case 'USER_INTERACTION':
 			return true;
 		case 'RUN_OK':
@@ -95,6 +96,7 @@ export function isRunnerCapabilities(value: unknown): value is RunnerCapabilitie
 	return (
 		typeof value.heartbeat === 'boolean' &&
 		(value.runtimeReset === undefined || typeof value.runtimeReset === 'boolean') &&
+		(value.userActivationPrompt === undefined || typeof value.userActivationPrompt === 'boolean') &&
 		!('runtimeConfig' in value) &&
 		!('exports' in value) &&
 		!('fonts' in value) &&

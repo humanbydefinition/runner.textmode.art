@@ -36,6 +36,12 @@ if (!container) {
 
 const runtime = new IframeTextmodeRuntime({
 	runnerUrl: 'https://runner.textmode.art/',
+	onUserActivationRequired() {
+		container.dataset.userActivation = 'required';
+	},
+	onUserInteraction() {
+		delete container.dataset.userActivation;
+	},
 	onStatusChange(status: RunnerRuntimeStatus, reason) {
 		console.info('runner status changed', status, reason);
 	},
@@ -93,6 +99,11 @@ Typical host apps follow this lifecycle:
 6. Call `dispose` when the host view is unmounted.
 
 `resetRuntime` falls back to reconnecting when an older runner does not advertise the optional `runtimeReset` capability.
+
+Cross-origin WebKit runners may request one trusted child-frame interaction
+through `onUserActivationRequired`. A host can temporarily expose or elevate
+the existing iframe until `onUserInteraction` fires. Programmatic focus or a
+synthetic parent-page click is not an equivalent substitute.
 
 The runtime exposes `status`, `isReady`, and `frame` getters for host UI state.
 

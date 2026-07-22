@@ -93,6 +93,15 @@ export interface UserInteractionMessage {
 }
 
 /**
+ * Runner request for a trusted interaction inside its cross-origin document.
+ *
+ * @category Messages
+ */
+export interface UserActivationRequiredMessage {
+	type: 'USER_ACTIVATION_REQUIRED';
+}
+
+/**
  * Heartbeat response from the runner.
  *
  * @category Messages
@@ -117,6 +126,7 @@ export type RunnerToParentMessage =
 	| SynthErrorMessage
 	| HardResetMessage
 	| ToggleUIMessage
+	| UserActivationRequiredMessage
 	| UserInteractionMessage
 	| PongMessage;
 

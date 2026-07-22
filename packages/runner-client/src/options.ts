@@ -74,6 +74,8 @@ export interface IframeTextmodeRuntimeOptions {
 	onHardReset?: () => void;
 	/** Called when the runner requests host UI visibility changes. */
 	onToggleUI?: () => void;
+	/** Called when the runner needs a trusted interaction inside its iframe document. */
+	onUserActivationRequired?: () => void;
 	/** Called when the runner reports user interaction. */
 	onUserInteraction?: () => void;
 	/** Called when the runner becomes unavailable or hung. */
