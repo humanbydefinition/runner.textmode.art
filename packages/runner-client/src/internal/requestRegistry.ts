@@ -10,7 +10,6 @@ export interface RequestTimerApi {
 }
 
 interface PendingRequest<T> {
-	kind: RequestKind;
 	resolve: (value: T) => void;
 	reject: (error: Error) => void;
 	cleanup: () => void;
@@ -18,7 +17,6 @@ interface PendingRequest<T> {
 
 interface RegisterRequestOptions {
 	requestId: string;
-	kind: RequestKind;
 	messageType: ParentToRunnerMessage['type'];
 	timeoutMs: number;
 	onTimeout: (error: Error) => void;
@@ -35,10 +33,6 @@ export class RequestRegistry {
 	) {
 		this.timerApi = timerApi;
 		this.visibilityApi = visibilityApi;
-	}
-
-	get size(): number {
-		return this.pending.size;
 	}
 
 	register<T>(options: RegisterRequestOptions): Promise<T> {
@@ -104,7 +98,6 @@ export class RequestRegistry {
 			}
 
 			this.pending.set(options.requestId, {
-				kind: options.kind,
 				resolve: resolve as (value: unknown) => void,
 				reject,
 				cleanup,
@@ -146,10 +139,12 @@ export class RequestRegistry {
 export function requestKindForMessage(type: ParentToRunnerMessage['type']): RequestKind {
 	switch (type) {
 		case 'RUN_CODE':
-		case 'SOFT_RESET':
 			return 'run';
+		case 'RESET_RUNTIME':
+			return 'lifecycle';
 		case 'PING':
 		case 'DISPOSE':
+		case 'AUDIO_DATA':
 			return 'lifecycle';
 	}
 }

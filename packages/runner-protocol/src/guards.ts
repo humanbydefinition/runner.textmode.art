@@ -1,11 +1,15 @@
 import type { RunnerCapabilities } from './capabilities';
 import type { InitMessage, ParentToRunnerMessage, RunnerToParentMessage } from './messages';
 import {
+	isBoundedUint8Array,
 	isFiniteNumber,
 	isMessageRecord,
 	isOptionalFiniteNumber,
 	isOptionalString,
 } from './guards.internal';
+
+const MAX_AUDIO_FFT_BINS = 4096;
+const MAX_AUDIO_WAVEFORM_SAMPLES = 8192;
 
 /**
  * Checks whether a value is a valid current runner-to-host message.
@@ -18,7 +22,9 @@ export function isRunnerMessage(msg: unknown): msg is RunnerToParentMessage {
 	switch (msg.type) {
 		case 'READY':
 			return !('v' in msg) && isRunnerCapabilities(msg.capabilities);
+		case 'HARD_RESET':
 		case 'TOGGLE_UI':
+		case 'USER_ACTIVATION_REQUIRED':
 		case 'USER_INTERACTION':
 			return true;
 		case 'RUN_OK':
@@ -50,12 +56,19 @@ export function isParentMessage(msg: unknown): msg is ParentToRunnerMessage {
 
 	switch (msg.type) {
 		case 'RUN_CODE':
-		case 'SOFT_RESET':
 			return typeof msg.code === 'string' && isOptionalString(msg.requestId);
+		case 'RESET_RUNTIME':
+			return typeof msg.code === 'string' && typeof msg.requestId === 'string';
 		case 'DISPOSE':
 			return true;
 		case 'PING':
 			return isOptionalString(msg.nonce);
+		case 'AUDIO_DATA':
+			return (
+				isBoundedUint8Array(msg.fft, MAX_AUDIO_FFT_BINS) &&
+				isBoundedUint8Array(msg.waveform, MAX_AUDIO_WAVEFORM_SAMPLES) &&
+				isFiniteNumber(msg.timestamp)
+			);
 		default:
 			return false;
 	}
@@ -82,6 +95,8 @@ export function isRunnerCapabilities(value: unknown): value is RunnerCapabilitie
 
 	return (
 		typeof value.heartbeat === 'boolean' &&
+		(value.runtimeReset === undefined || typeof value.runtimeReset === 'boolean') &&
+		(value.userActivationPrompt === undefined || typeof value.userActivationPrompt === 'boolean') &&
 		!('runtimeConfig' in value) &&
 		!('exports' in value) &&
 		!('fonts' in value) &&

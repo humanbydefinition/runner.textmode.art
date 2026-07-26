@@ -39,13 +39,16 @@ message shape. Feature availability is advertised through capabilities.
 | [RunErrorMessage](interfaces/RunErrorMessage.md) | Code execution failure result. |
 | [SynthErrorMessage](interfaces/SynthErrorMessage.md) | Shader synth parameter error reported by the runner. |
 | [ToggleUIMessage](interfaces/ToggleUIMessage.md) | Runner-originated shortcut event requesting host UI visibility changes. |
+| [HardResetMessage](interfaces/HardResetMessage.md) | Runner-originated shortcut event requesting a fresh host runtime. |
 | [UserInteractionMessage](interfaces/UserInteractionMessage.md) | Runner-originated user interaction event. |
+| [UserActivationRequiredMessage](interfaces/UserActivationRequiredMessage.md) | Runner request for a trusted interaction inside its cross-origin document. |
 | [PongMessage](interfaces/PongMessage.md) | Heartbeat response from the runner. |
 | [RunnerToParentMessage](type-aliases/RunnerToParentMessage.md) | Messages sent from the runner iframe to a host app. |
 | [RunCodeMessage](interfaces/RunCodeMessage.md) | Request to execute code in the runner. |
-| [SoftResetMessage](interfaces/SoftResetMessage.md) | Request to reset frame state and execute code. |
+| [ResetRuntimeMessage](interfaces/ResetRuntimeMessage.md) | Request to rebuild the textmode runtime inside the existing iframe document. |
 | [DisposeMessage](interfaces/DisposeMessage.md) | Request to dispose the runner runtime. |
 | [PingMessage](interfaces/PingMessage.md) | Heartbeat request sent by a host app. |
+| [AudioDataMessage](interfaces/AudioDataMessage.md) | Fire-and-forget audio analysis frame sent by a host app. |
 | [ParentToRunnerMessage](type-aliases/ParentToRunnerMessage.md) | Messages sent from a host app to the runner after handshake. |
 | [WindowToRunnerMessage](type-aliases/WindowToRunnerMessage.md) | Messages sent to the runner iframe window before MessagePort attachment. |
 | [Message](type-aliases/Message.md) | Any message in the runner protocol. |

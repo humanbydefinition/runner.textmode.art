@@ -4,13 +4,21 @@ import { createTextmodeExportPlugin } from 'textmode.export.js';
 import { FigletPlugin } from 'textmode.figlet.js';
 import { SynthPlugin, setGlobalErrorCallback } from 'textmode.synth.js';
 import { FiltersPlugin } from 'textmode.filters.js';
-import type { ITextmodeManager, SynthLayer } from './textmode.types';
+import type { SynthLayer } from './textmode.types';
 
 type TextmodeSettings = {
     width: number;
     height: number;
     fontSize: number;
     frameRate: number;
+};
+
+type UserSetupCallback = () => void | Promise<void>;
+
+type InitialSetupRequest = {
+    callback?: UserSetupCallback;
+    resolve: () => void;
+    reject: (error: unknown) => void;
 };
 
 const DEFAULT_SETTINGS: Omit<TextmodeSettings, 'width' | 'height'> = {
@@ -22,8 +30,11 @@ const DEFAULT_SETTINGS: Omit<TextmodeSettings, 'width' | 'height'> = {
  * TextmodeManager - manages the textmode.js instance lifecycle.
  * Handles initialization, resize, layer cleanup, and loop control.
  */
-export class TextmodeManager implements ITextmodeManager {
+export class TextmodeManager {
     private instance: Textmodifier | null = null;
+    private initialSetupComplete = false;
+    private initialSetupRequest: InitialSetupRequest | null = null;
+    private resolveInitialSetupRequest: ((request: InitialSetupRequest) => void) | null = null;
     private settings: TextmodeSettings = {
         width: window.innerWidth,
         height: window.innerHeight,
@@ -41,10 +52,6 @@ export class TextmodeManager implements ITextmodeManager {
         return this.instance;
     }
 
-    isInitialized(): boolean {
-        return this.instance !== null;
-    }
-
     /**
      * Initialize textmode and attach to DOM
      */
@@ -57,12 +64,48 @@ export class TextmodeManager implements ITextmodeManager {
             height: window.innerHeight,
         };
 
+        const initialSetupRequest = new Promise<InitialSetupRequest>((resolve) => {
+            this.resolveInitialSetupRequest = resolve;
+        });
+
         this.instance = textmode.create({
             width: this.settings.width,
             height: this.settings.height,
             fontSize: this.settings.fontSize,
             frameRate: this.settings.frameRate,
             plugins: [createTextmodeExportPlugin({ overlay: false }), SynthPlugin, FiltersPlugin, FigletPlugin],
+        });
+
+        const instance = this.instance;
+        void instance.setup(async () => {
+            const request = await initialSetupRequest;
+
+            if (this.instance !== instance) {
+                request.reject(new Error('Textmode was disposed before setup could run'));
+                return;
+            }
+
+            instance.noLoop();
+            let setupError: unknown;
+            let setupSucceeded = false;
+
+            try {
+                await request.callback?.();
+                setupSucceeded = true;
+            } catch (error) {
+                setupError = error;
+            } finally {
+                if (this.instance === instance) {
+                    this.initialSetupComplete = true;
+                    this.initialSetupRequest = null;
+                }
+            }
+
+            if (setupSucceeded) {
+                request.resolve();
+            } else {
+                request.reject(setupError);
+            }
         });
 
         document.body.appendChild(this.instance.canvas);
@@ -76,6 +119,38 @@ export class TextmodeManager implements ITextmodeManager {
      */
     pause(): void {
         this.instance?.noLoop();
+    }
+
+    /**
+     * Run the first execution inside textmode's public one-shot setup lifecycle,
+     * then run later execution-scoped setup callbacks directly.
+     */
+    async runUserSetup(callback?: UserSetupCallback): Promise<void> {
+        const instance = this.instance;
+        if (!instance) {
+            throw new Error('Textmode is not initialized');
+        }
+
+        if (!this.initialSetupComplete) {
+            const resolveRequest = this.resolveInitialSetupRequest;
+            if (!resolveRequest) {
+                throw new Error('Textmode setup is already running');
+            }
+
+            this.resolveInitialSetupRequest = null;
+            return new Promise<void>((resolve, reject) => {
+                const request = { callback, resolve, reject };
+                this.initialSetupRequest = request;
+                resolveRequest(request);
+            });
+        }
+
+        if (this.instance !== instance) {
+            throw new Error('Textmode was disposed before setup could run');
+        }
+
+        instance.noLoop();
+        await callback?.();
     }
 
     /**
@@ -95,7 +170,7 @@ export class TextmodeManager implements ITextmodeManager {
     /**
      * Clean up layers before new execution
      */
-    cleanupLayers(isSoftReset: boolean): void {
+    cleanupLayers(): void {
         if (!this.instance) return;
 
         // Reset base layer to default state to prevent property leakage between sketches
@@ -151,15 +226,6 @@ export class TextmodeManager implements ITextmodeManager {
             // Ignore layer clear errors during teardown
         }
 
-        // For soft reset, also reset frame count
-        if (isSoftReset) {
-            try {
-                this.instance.frameCount = 0;
-                this.instance.secs = 0;
-            } catch {
-                // Ignore time reset errors
-            }
-        }
     }
 
     /**
@@ -227,6 +293,16 @@ export class TextmodeManager implements ITextmodeManager {
 
         // Clear the global synth error callback
         setGlobalErrorCallback(null);
+
+        const setupDisposedError = new Error('Textmode was disposed before setup could run');
+        this.initialSetupRequest?.reject(setupDisposedError);
+        this.resolveInitialSetupRequest?.({
+            resolve: () => {},
+            reject: () => {},
+        });
+        this.initialSetupRequest = null;
+        this.resolveInitialSetupRequest = null;
+        this.initialSetupComplete = false;
 
         const canvas = this.instance?.canvas ?? null;
         this.instance?.destroy();

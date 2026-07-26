@@ -17,5 +17,7 @@ export {
 	type IframeMountMode,
 	type IframeSandboxToken,
 	type IframeTextmodeRuntimeOptions,
+	type RunnerProbeOptions,
+	type RunnerReconnectOptions,
 } from './options';
 export { type RunnerRuntimeStatus } from './status';

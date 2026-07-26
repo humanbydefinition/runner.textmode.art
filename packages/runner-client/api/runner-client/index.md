@@ -24,6 +24,7 @@ and disposal for host apps.
 | ------ | ------ |
 | [IframeSandboxToken](type-aliases/IframeSandboxToken.md) | Iframe sandbox token supported by the runner client. |
 | [IframeMountMode](type-aliases/IframeMountMode.md) | How the runner iframe should be mounted into its container. |
+| [RunnerReconnectOptions](interfaces/RunnerReconnectOptions.md) | Controls how a runner reconnect restores previously requested code. |
 | [DEFAULT\_IFRAME\_SANDBOX\_TOKENS](variables/DEFAULT_IFRAME_SANDBOX_TOKENS.md) | Default sandbox tokens used by the runner iframe. |
 | [IframeTextmodeRuntimeOptions](interfaces/IframeTextmodeRuntimeOptions.md) | Options for [IframeTextmodeRuntime](classes/IframeTextmodeRuntime.md). |
 

@@ -1,6 +1,7 @@
 import { MessagePortTransport } from '@/core/transport/MessagePortTransport';
 import { TextmodeManager } from '@/engines/textmode/TextmodeManager';
 import { ExecutionContext } from '@/engines/textmode/ExecutionContext';
+import { AudioReceiver } from '@/engines/textmode/AudioReceiver';
 import { ErrorReporter } from '@/engines/textmode/ErrorReporter';
 import { FrameScheduler } from '@/engines/textmode/FrameScheduler';
 import {
@@ -14,6 +15,8 @@ import {
 } from '@textmode/runner-protocol';
 
 import { HandshakeHandler } from '@/core/transport/HandshakeHandler';
+import { UserActivationPrompt } from '@/core/user-activation/UserActivationPrompt';
+import { getRunnerShortcut } from './shortcuts';
 
 /**
  * Concrete engine implementation for Textmode sketches.
@@ -29,6 +32,7 @@ export class TextmodeEngine {
 	private lastWorkingCode: string | null = null;
 	private hasStarted = false;
 	private textmode: TextmodeManager;
+	private audioReceiver: AudioReceiver;
 	private context: ExecutionContext;
 	private synthErrorReported = false;
 	private isExecuting = false;
@@ -36,14 +40,25 @@ export class TextmodeEngine {
 	private rejectionHandler: ((event: PromiseRejectionEvent) => void) | null = null;
 	private runtimeInitialized = false;
 	private runtimeEventHandlersAttached = false;
-	private readonly handleUserInteraction = (): void => {
+	private userInteractionReported = false;
+	private readonly userActivationPrompt = new UserActivationPrompt();
+	private readonly handleUserInteraction = (event: Event): void => {
+		if (!event.isTrusted || this.userInteractionReported) return;
+
+		this.userInteractionReported = true;
+		this.userActivationPrompt.dismiss();
 		this.transport.send({ type: 'USER_INTERACTION' });
 	};
 	private readonly handleKeyDown = (event: KeyboardEvent): void => {
-		if (event.ctrlKey && event.shiftKey && (event.key === 'H' || event.key === 'h')) {
-			event.preventDefault();
-			this.transport.send({ type: 'TOGGLE_UI' });
+		if (event.key !== 'Escape') {
+			this.handleUserInteraction(event);
 		}
+
+		const shortcut = getRunnerShortcut(event);
+		if (!shortcut) return;
+
+		event.preventDefault();
+		this.transport.send({ type: shortcut === 'hard-reset' ? 'HARD_RESET' : 'TOGGLE_UI' });
 	};
 
 	constructor(allowedParentOrigins: Set<string>) {
@@ -51,18 +66,19 @@ export class TextmodeEngine {
 		this.errorReporter = new ErrorReporter((msg) => this.transport.send(msg));
 		this.scheduler = new FrameScheduler({
 			isRendering: () => this.isRendering(),
-			onExecute: (code, isSoftReset, requestId) => this.executeInternal(code, isSoftReset, requestId),
+			onExecute: (execution) => this.executeInternal(execution),
 		});
 
 		this.textmode = new TextmodeManager();
-		this.context = new ExecutionContext({
-			getTextmode: () => this.textmode.getInstance(),
-			errorReporter: this.errorReporter,
-		});
+		this.audioReceiver = new AudioReceiver();
+		this.context = this.createExecutionContext();
 
 		this.handshakeHandler = new HandshakeHandler({
 			isAllowedOrigin: (origin) => this.isAllowedOrigin(origin),
 			isInitMessage: (data) => isInitMessage(data),
+			onOriginEstablished: (origin) => {
+				this.userActivationPrompt.show(origin);
+			},
 			onPortExtracted: (port) => {
 				this.transport.attach(port, this.handlePortMessage as (event: MessageEvent) => void);
 			},
@@ -73,7 +89,19 @@ export class TextmodeEngine {
 					type: 'READY',
 					capabilities: this.getCapabilities(),
 				});
+				if (this.userActivationPrompt.isVisible) {
+					this.transport.send({ type: 'USER_ACTIVATION_REQUIRED' });
+				}
 			},
+		});
+	}
+
+	private createExecutionContext(): ExecutionContext {
+		return new ExecutionContext({
+			getTextmode: () => this.textmode.getInstance(),
+			runTextmodeSetup: (callback) => this.textmode.runUserSetup(callback),
+			errorReporter: this.errorReporter,
+			audioReceiver: this.audioReceiver,
 		});
 	}
 
@@ -81,6 +109,7 @@ export class TextmodeEngine {
 		if (this.hasStarted) return;
 		this.hasStarted = true;
 		this.setupGlobalErrorHandlers((error) => this.errorReporter.report(error as Error | string | Event));
+		this.attachRuntimeEventHandlers();
 		window.addEventListener('message', this.handleInitMessage);
 	}
 
@@ -125,14 +154,16 @@ export class TextmodeEngine {
 		switch (msg.type) {
 			case 'RUN_CODE':
 				this.ensureRuntimeInitialized();
-				this.scheduleCode(msg.code, false, msg.requestId);
+				this.scheduleCode(msg.code, 'run', msg.requestId);
 				break;
-			case 'SOFT_RESET':
-				this.ensureRuntimeInitialized();
-				this.scheduleCode(msg.code, true, msg.requestId);
+			case 'RESET_RUNTIME':
+				this.scheduleCode(msg.code, 'reset-runtime', msg.requestId);
 				break;
 			case 'PING':
 				this.transport.send({ type: 'PONG', nonce: msg.nonce, timestamp: Date.now() });
+				break;
+			case 'AUDIO_DATA':
+				this.audioReceiver.update(msg);
 				break;
 			case 'DISPOSE':
 				this.dispose();
@@ -140,12 +171,16 @@ export class TextmodeEngine {
 		}
 	};
 
-	private scheduleCode(code: string, isSoftReset: boolean, requestId?: string): void {
-		this.scheduler.schedule({ code, isSoftReset, requestId });
+	private scheduleCode(code: string, mode: 'run' | 'reset-runtime', requestId?: string): void {
+		this.scheduler.schedule({ code, mode, requestId });
 	}
 
-	private executeInternal(code: string, isSoftReset: boolean, requestId?: string): void {
-		void this.execute(code, isSoftReset, requestId);
+	private executeInternal(execution: { code: string; mode: 'run' | 'reset-runtime'; requestId?: string }): void {
+		const operation =
+			execution.mode === 'reset-runtime'
+				? this.resetRuntime(execution.code, execution.requestId)
+				: this.execute(execution.code, execution.requestId);
+		void operation.catch((error) => this.errorReporter.report(error as Error, execution.requestId));
 	}
 
 	/**
@@ -158,15 +193,18 @@ export class TextmodeEngine {
 		this.textmode.init();
 		this.runtimeInitialized = true;
 		this.attachRuntimeEventHandlers();
+		this.setupSynthErrorHandler();
 	}
 
 	private attachRuntimeEventHandlers(): void {
 		if (this.runtimeEventHandlersAttached) return;
 
 		this.runtimeEventHandlersAttached = true;
-		window.addEventListener('pointerdown', this.handleUserInteraction, { passive: true });
+		window.addEventListener('click', this.handleUserInteraction, { capture: true, passive: true });
 		window.addEventListener('keydown', this.handleKeyDown);
+	}
 
+	private setupSynthErrorHandler(): void {
 		this.textmode.setupSynthErrorHandler((error) => {
 			if (!this.synthErrorReported) {
 				this.synthErrorReported = true;
@@ -176,6 +214,24 @@ export class TextmodeEngine {
 				});
 			}
 		});
+	}
+
+	/**
+	 * Rebuild the complete sketch runtime while preserving this iframe document
+	 * and its established MessagePort connection.
+	 */
+	async resetRuntime(code: string, requestId?: string): Promise<void> {
+		this.context.dispose();
+		this.textmode.dispose();
+
+		this.textmode = new TextmodeManager();
+		this.audioReceiver = new AudioReceiver();
+		this.context = this.createExecutionContext();
+		this.runtimeInitialized = false;
+		this.lastWorkingCode = null;
+		this.synthErrorReported = false;
+
+		await this.execute(code, requestId);
 	}
 
 	dispose(): void {
@@ -188,9 +244,11 @@ export class TextmodeEngine {
 		this.runtimeInitialized = false;
 		this.runtimeEventHandlersAttached = false;
 		this.synthErrorReported = false;
+		this.userInteractionReported = false;
+		this.userActivationPrompt.dispose();
 
 		window.removeEventListener('message', this.handleInitMessage);
-		window.removeEventListener('pointerdown', this.handleUserInteraction);
+		window.removeEventListener('click', this.handleUserInteraction, true);
 		window.removeEventListener('keydown', this.handleKeyDown);
 
 		this.teardownGlobalErrorHandlers();
@@ -207,7 +265,7 @@ export class TextmodeEngine {
 	/**
 	 * Execute code in the current sandboxed textmode runtime.
 	 */
-	async execute(code: string, isSoftReset: boolean, requestId?: string): Promise<void> {
+	async execute(code: string, requestId?: string): Promise<void> {
 		this.ensureRuntimeInitialized();
 
 		this.synthErrorReported = false;
@@ -221,7 +279,7 @@ export class TextmodeEngine {
 				return;
 			}
 
-			this.textmode.cleanupLayers(isSoftReset);
+			this.textmode.cleanupLayers();
 
 			const result = await this.context.execute(code);
 
@@ -245,7 +303,7 @@ export class TextmodeEngine {
 		if (!this.lastWorkingCode) return;
 
 		try {
-			this.textmode.cleanupLayers(false);
+			this.textmode.cleanupLayers();
 			const result = await this.context.execute(this.lastWorkingCode);
 			if (!result.success) {
 				console.warn('Failed to restore last working code:', result.error?.message);

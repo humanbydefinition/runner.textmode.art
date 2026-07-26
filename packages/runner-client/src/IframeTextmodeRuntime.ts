@@ -1,5 +1,6 @@
 import {
 	isRunnerCapabilities,
+	type AudioDataMessage,
 	type InitMessage,
 	type ParentToRunnerMessage,
 	type ReadyMessage,
@@ -14,6 +15,8 @@ import {
 	type IframeMountMode,
 	type IframeSandboxToken,
 	type IframeTextmodeRuntimeOptions,
+	type RunnerProbeOptions,
+	type RunnerReconnectOptions,
 } from './options';
 import type { RunnerRuntimeStatus } from './status';
 import { HeartbeatController } from './internal/heartbeat';
@@ -132,7 +135,13 @@ export class IframeTextmodeRuntime {
 	 */
 	async init(container: HTMLElement): Promise<boolean> {
 		this.container = container;
-		this.assertSandboxOriginPolicy();
+		try {
+			this.assertSandboxOriginPolicy();
+		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error);
+			this.handleUnavailable(reason);
+			throw error;
+		}
 
 		if (this.isReady && this.iframe?.isConnected) {
 			return true;
@@ -194,17 +203,18 @@ export class IframeTextmodeRuntime {
 	}
 
 	/**
-	 * Recreates the iframe and reruns the last requested code when available.
+	 * Recreates the iframe and optionally reruns the last requested code.
 	 *
+	 * @param options - Reconnect behavior. The last code is rerun by default.
 	 * @returns `true` when reconnection succeeds.
 	 * @category Runtime
 	 */
-	async reconnect(): Promise<boolean> {
+	async reconnect(options: RunnerReconnectOptions = {}): Promise<boolean> {
 		if (!this.container) {
 			return false;
 		}
 
-		const code = this.lastRequestedCode;
+		const code = options.rerun === false ? null : this.lastRequestedCode;
 		this.setStatus('recovering');
 		this.forceDisposeFrameForReconnect();
 		const initialized = await this.init(this.container);
@@ -238,14 +248,69 @@ export class IframeTextmodeRuntime {
 	 *
 	 * @category Runtime
 	 */
-	async runCode(code: string, options: { softReset?: boolean } = {}): Promise<boolean> {
-		this.lastRequestedCode = code;
+	async runCode(code: string): Promise<boolean> {
 		const requestId = this.createRequestId('run');
-		const message = options.softReset
-			? ({ type: 'SOFT_RESET', requestId, code } as const)
-			: ({ type: 'RUN_CODE', requestId, code } as const);
+		const message = { type: 'RUN_CODE', requestId, code } as const;
 
 		await this.request<RunOkMessage>(message);
+		this.lastRequestedCode = code;
+		return true;
+	}
+
+	/**
+	 * Executes code as a transactional candidate.
+	 *
+	 * Failed and timed-out probes do not replace the code used by reconnect.
+	 *
+	 * @category Runtime
+	 */
+	async probeCode(code: string, options: RunnerProbeOptions = {}): Promise<boolean> {
+		const requestId = this.createRequestId('probe');
+		const message = { type: 'RUN_CODE', requestId, code } as const;
+
+		await this.request<RunOkMessage>(message, options.timeoutMs ?? this.requestTimeoutMs);
+		this.lastRequestedCode = code;
+		return true;
+	}
+
+	/**
+	 * Rebuilds the textmode runtime while preserving the current iframe document.
+	 *
+	 * Older runners fall back to a full reconnect followed by one code execution.
+	 *
+	 * @category Runtime
+	 */
+	async resetRuntime(code: string): Promise<boolean> {
+		if (this.capabilities?.runtimeReset !== true) {
+			const reconnected = await this.reconnect({ rerun: false });
+			return reconnected ? this.runCode(code) : false;
+		}
+
+		const requestId = this.createRequestId('reset');
+		await this.request<RunOkMessage>({ type: 'RESET_RUNTIME', requestId, code });
+		this.lastRequestedCode = code;
+		return true;
+	}
+
+	/**
+	 * Sends a fire-and-forget audio analysis frame to the runner.
+	 *
+	 * Audio frames are intentionally not request-tracked: hosts may send them at
+	 * animation-frame cadence, and stale frames can be safely dropped.
+	 *
+	 * @category Runtime
+	 */
+	sendAudioData(data: Omit<AudioDataMessage, 'type'>): boolean {
+		if (!this.port || !this.ready) {
+			return false;
+		}
+
+		this.postMessage({
+			type: 'AUDIO_DATA',
+			fft: data.fft,
+			waveform: data.waveform,
+			timestamp: data.timestamp,
+		});
 		return true;
 	}
 
@@ -281,8 +346,14 @@ export class IframeTextmodeRuntime {
 			onSynthError: (synthErrorMessage) => {
 				this.options.onSynthError?.(synthErrorMessage.message);
 			},
+			onHardReset: () => {
+				this.options.onHardReset?.();
+			},
 			onToggleUI: () => {
 				this.options.onToggleUI?.();
+			},
+			onUserActivationRequired: () => {
+				this.options.onUserActivationRequired?.();
 			},
 			onUserInteraction: () => {
 				this.options.onUserInteraction?.();
@@ -351,7 +422,6 @@ export class IframeTextmodeRuntime {
 		const kind = requestKindForMessage(message.type);
 		const promise = this.pending.register<T>({
 			requestId,
-			kind,
 			messageType: message.type,
 			timeoutMs,
 			onTimeout: (error) => {

@@ -5,7 +5,7 @@ Browser iframe runtime client for the hosted textmode runner.
 This package gives any browser host app a typed runtime API for mounting the
 runner iframe, performing the current generic protocol handshake, routing
 request/response messages, monitoring heartbeat status, running code,
-soft-resetting sketches, reconnecting, and disposing the transport.
+reconnecting, and disposing the transport.
 
 It does not execute textmode.js sketches directly. It controls a runner app at
 the `runnerUrl` you provide.
@@ -36,6 +36,12 @@ if (!container) {
 
 const runtime = new IframeTextmodeRuntime({
 	runnerUrl: 'https://runner.textmode.art/',
+	onUserActivationRequired() {
+		container.dataset.userActivation = 'required';
+	},
+	onUserInteraction() {
+		delete container.dataset.userActivation;
+	},
 	onStatusChange(status: RunnerRuntimeStatus, reason) {
 		console.info('runner status changed', status, reason);
 	},
@@ -55,7 +61,6 @@ try {
 	}
 }
 
-await runtime.runCode('t.frameCount = 0;', { softReset: true });
 runtime.dispose();
 ```
 
@@ -88,10 +93,17 @@ Typical host apps follow this lifecycle:
 
 1. Create an `IframeTextmodeRuntime` with a trusted `runnerUrl`.
 2. Call `init(container)` from a browser context.
-3. Use `runCode` for normal execution and `runCode(code, { softReset: true })`
-   when the host should reset sketch time before rerunning code.
-4. Call `reconnect` after a recoverable runner failure.
-5. Call `dispose` when the host view is unmounted.
+3. Use `runCode` to replace the current sketch execution while preserving its timeline.
+4. Use `resetRuntime` to rebuild textmode while preserving the current iframe document and its browser interaction state.
+5. Call `reconnect` only when the iframe document or transport must be replaced.
+6. Call `dispose` when the host view is unmounted.
+
+`resetRuntime` falls back to reconnecting when an older runner does not advertise the optional `runtimeReset` capability.
+
+Cross-origin WebKit runners may request one trusted child-frame interaction
+through `onUserActivationRequired`. A host can temporarily expose or elevate
+the existing iframe until `onUserInteraction` fires. Programmatic focus or a
+synthetic parent-page click is not an equivalent substitute.
 
 The runtime exposes `status`, `isReady`, and `frame` getters for host UI state.
 

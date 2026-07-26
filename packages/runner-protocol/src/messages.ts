@@ -75,12 +75,30 @@ export interface ToggleUIMessage {
 }
 
 /**
+ * Runner-originated shortcut event requesting a fresh host runtime.
+ *
+ * @category Messages
+ */
+export interface HardResetMessage {
+	type: 'HARD_RESET';
+}
+
+/**
  * Runner-originated user interaction event.
  *
  * @category Messages
  */
 export interface UserInteractionMessage {
 	type: 'USER_INTERACTION';
+}
+
+/**
+ * Runner request for a trusted interaction inside its cross-origin document.
+ *
+ * @category Messages
+ */
+export interface UserActivationRequiredMessage {
+	type: 'USER_ACTIVATION_REQUIRED';
 }
 
 /**
@@ -106,7 +124,9 @@ export type RunnerToParentMessage =
 	| RunOkMessage
 	| RunErrorMessage
 	| SynthErrorMessage
+	| HardResetMessage
 	| ToggleUIMessage
+	| UserActivationRequiredMessage
 	| UserInteractionMessage
 	| PongMessage;
 
@@ -124,16 +144,16 @@ export interface RunCodeMessage {
 }
 
 /**
- * Request to reset frame state and execute code.
+ * Request to rebuild the textmode runtime inside the existing iframe document.
  *
  * @category Messages
  */
-export interface SoftResetMessage {
-	type: 'SOFT_RESET';
-	/** Source code to execute after soft reset. */
+export interface ResetRuntimeMessage {
+	type: 'RESET_RUNTIME';
+	/** Source code to execute in the fresh textmode runtime. */
 	code: string;
-	/** Optional request identifier for result routing. */
-	requestId?: string;
+	/** Request identifier used for result routing. */
+	requestId: string;
 }
 
 /**
@@ -157,15 +177,34 @@ export interface PingMessage {
 }
 
 /**
+ * Fire-and-forget audio analysis frame sent by a host app.
+ *
+ * Values use the Web Audio byte analyser convention:
+ * frequency bins and waveform samples are integers in the 0-255 range.
+ *
+ * @category Messages
+ */
+export interface AudioDataMessage {
+	type: 'AUDIO_DATA';
+	/** Frequency-domain FFT data. */
+	fft: Uint8Array;
+	/** Time-domain waveform data. */
+	waveform: Uint8Array;
+	/** Host-side capture timestamp. */
+	timestamp: number;
+}
+
+/**
  * Messages sent from a host app to the runner after handshake.
  *
  * @category Messages
  */
 export type ParentToRunnerMessage =
 	| RunCodeMessage
-	| SoftResetMessage
+	| ResetRuntimeMessage
 	| DisposeMessage
-	| PingMessage;
+	| PingMessage
+	| AudioDataMessage;
 
 /**
  * Messages sent to the runner iframe window before MessagePort attachment.

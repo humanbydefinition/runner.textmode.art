@@ -1,4 +1,3 @@
-import type { IErrorReporter } from './textmode.types';
 import type { RunnerToParentMessage } from '@textmode/runner-protocol';
 import { normalizeError } from '@/core/errors/normalizeError';
 import type { CodeError } from '@/core/types';
@@ -8,7 +7,7 @@ export type RunnerMessageSender = (msg: RunnerToParentMessage) => void;
 /**
  * Sends error messages to the parent window
  */
-export class ErrorReporter implements IErrorReporter {
+export class ErrorReporter {
     private readonly sendMessage: RunnerMessageSender;
 
     constructor(sendMessage: RunnerMessageSender) {

@@ -7,6 +7,21 @@ export interface SafeProxyOptions {
     hasDrawError: () => boolean;
 }
 
+export interface TextmodeProxyExecutionHooks {
+    /** Capture the setup callback for this code execution. */
+    onSetup: (callback: unknown) => void;
+    /** Register a textmode resource owned by this code execution. */
+    onResource?: (resource: unknown) => void;
+}
+
+const EXECUTION_RESOURCE_FACTORIES = new Set([
+    'createFramebuffer',
+    'createMaterialShader',
+    'createFilterShader',
+    'createShader',
+    'createTexture',
+]);
+
 /**
  * Creates proxies for textmode objects that safely wrap draw callbacks.
  * Ensures runtime errors in user draw loops don't crash the entire application.
@@ -23,10 +38,32 @@ export class SafeProxyFactory {
     /**
      * Create a proxy for the main textmode instance
      */
-    createTextmodeProxy(original: Textmodifier): Textmodifier {
+    createTextmodeProxy(original: Textmodifier, hooks?: TextmodeProxyExecutionHooks): Textmodifier {
         return new Proxy(original, {
             get: (target, prop) => {
                 const value = (target as unknown as Record<string | symbol, unknown>)[prop];
+
+                if (prop === 'setup' && hooks) {
+                    return (callback: unknown): Promise<void> => {
+                        hooks.onSetup(callback);
+                        return Promise.resolve();
+                    };
+                }
+
+                if (typeof prop === 'string' && EXECUTION_RESOURCE_FACTORIES.has(prop) && typeof value === 'function') {
+                    return (...args: unknown[]) => {
+                        const result = (value as (...factoryArgs: unknown[]) => unknown).apply(target, args);
+                        if (isPromiseLike(result)) {
+                            return Promise.resolve(result).then((resource) => {
+                                hooks?.onResource?.(resource);
+                                return resource;
+                            });
+                        }
+
+                        hooks?.onResource?.(result);
+                        return result;
+                    };
+                }
 
                 if (prop === 'draw') {
                     return (callback: () => void) => target.draw(this.wrapDrawCallback(callback));
@@ -208,4 +245,10 @@ export class SafeProxyFactory {
         return loadPromise;
     }
 
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+    return (
+        (typeof value === 'object' && value !== null) || typeof value === 'function'
+    ) && typeof (value as PromiseLike<unknown>).then === 'function';
 }

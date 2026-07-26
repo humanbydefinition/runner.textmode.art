@@ -1,10 +1,10 @@
-import type { IFrameScheduler, PendingExecution } from './textmode.types';
+import type { PendingExecution } from './textmode.types';
 
 export interface FrameSchedulerOptions {
     /** Callback to check if currently rendering */
     isRendering: () => boolean;
-    /** Callback to execute the code */
-    onExecute: (code: string, isSoftReset: boolean, requestId?: string) => void | Promise<void>;
+    /** Callback to execute the pending command. */
+    onExecute: (execution: PendingExecution) => void | Promise<void>;
     /** Fallback delay for browsers that pause requestAnimationFrame. */
     fallbackDelayMs?: number;
 }
@@ -12,7 +12,7 @@ export interface FrameSchedulerOptions {
 /**
  * Schedules code execution at safe frame boundaries
  */
-export class FrameScheduler implements IFrameScheduler {
+export class FrameScheduler {
     private pendingExecution: PendingExecution | null = null;
     private executionGeneration = 0;
     private options: FrameSchedulerOptions;
@@ -90,9 +90,9 @@ export class FrameScheduler implements IFrameScheduler {
             return;
         }
 
-        const { code, isSoftReset, requestId } = this.pendingExecution;
+        const execution = this.pendingExecution;
         this.pendingExecution = null;
-        this.options.onExecute(code, isSoftReset, requestId);
+        this.options.onExecute(execution);
     }
 
     private clearScheduledCallbacks(): void {

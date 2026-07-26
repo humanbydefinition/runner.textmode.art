@@ -17,6 +17,24 @@ export type IframeSandboxToken = 'allow-downloads' | 'allow-same-origin' | 'allo
 export type IframeMountMode = 'append' | 'replace';
 
 /**
+ * Controls how a runner reconnect restores previously requested code.
+ *
+ * @category Options
+ */
+export interface RunnerReconnectOptions {
+	/** Rerun the last requested code after reconnecting. Defaults to `true`. */
+	rerun?: boolean;
+}
+
+/**
+ * Controls a transactional code probe.
+ */
+export interface RunnerProbeOptions {
+	/** Request timeout for the probe. Defaults to the runtime request timeout. */
+	timeoutMs?: number;
+}
+
+/**
  * Default sandbox tokens used by the runner iframe.
  *
  * The default deliberately excludes `allow-downloads`; downloads should be
@@ -60,8 +78,12 @@ export interface IframeTextmodeRuntimeOptions {
 	onRunError?: (error: RunnerExecutionError) => void;
 	/** Called when the runner reports a synth parameter error. */
 	onSynthError?: (message: string) => void;
+	/** Called when the runner requests a fresh host runtime. */
+	onHardReset?: () => void;
 	/** Called when the runner requests host UI visibility changes. */
 	onToggleUI?: () => void;
+	/** Called when the runner needs a trusted interaction inside its iframe document. */
+	onUserActivationRequired?: () => void;
 	/** Called when the runner reports user interaction. */
 	onUserInteraction?: () => void;
 	/** Called when the runner becomes unavailable or hung. */

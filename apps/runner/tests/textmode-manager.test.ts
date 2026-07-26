@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => {
 		destroy: vi.fn(),
 		frameCount: 123,
 		frameRate: vi.fn(),
+		grid: undefined as { cols: number; rows: number } | undefined,
 		isRenderingFrame: false,
 		layers: {
 			base: baseLayer,
@@ -28,6 +29,7 @@ const mocks = vi.hoisted(() => {
 		resetShader: vi.fn(),
 		resizeCanvas: vi.fn(),
 		secs: 4,
+		setup: vi.fn(),
 	};
 
 	return {
@@ -61,14 +63,20 @@ vi.mock('textmode.synth.js', () => ({
 	setGlobalErrorCallback: vi.fn(),
 }));
 
+let resizeHandler: (() => void) | undefined;
+
 describe('TextmodeManager', () => {
 	beforeEach(() => {
+		resizeHandler = undefined;
 		mocks.instance.frameCount = 123;
+		mocks.instance.grid = undefined;
 		mocks.instance.secs = 4;
 		vi.stubGlobal('window', {
 			innerWidth: 800,
 			innerHeight: 600,
-			addEventListener: vi.fn(),
+			addEventListener: vi.fn((eventName: string, handler: () => void) => {
+				if (eventName === 'resize') resizeHandler = handler;
+			}),
 			removeEventListener: vi.fn(),
 		});
 		vi.stubGlobal('document', {
@@ -83,19 +91,109 @@ describe('TextmodeManager', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('preserves frame time during normal cleanup and resets it during soft reset', async () => {
+	it('preserves frame time during execution cleanup', async () => {
 		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
 		const manager = new TextmodeManager();
 
 		manager.init();
-		manager.cleanupLayers(false);
+		manager.cleanupLayers();
 
 		expect(mocks.instance.frameCount).toBe(123);
 		expect(mocks.instance.secs).toBe(4);
 
-		manager.cleanupLayers(true);
+		manager.cleanupLayers();
 
-		expect(mocks.instance.frameCount).toBe(0);
-		expect(mocks.instance.secs).toBe(0);
+		expect(mocks.instance.frameCount).toBe(123);
+		expect(mocks.instance.secs).toBe(4);
+	});
+
+	it('resizes the textmode canvas to the viewport without user sketch code', async () => {
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+		manager.init();
+
+		Object.assign(window, { innerWidth: 1024, innerHeight: 768 });
+		resizeHandler?.();
+
+		expect(mocks.instance.resizeCanvas).toHaveBeenCalledOnce();
+		expect(mocks.instance.resizeCanvas).toHaveBeenCalledWith(1024, 768);
+
+		manager.dispose();
+		expect(window.removeEventListener).toHaveBeenCalledWith('resize', resizeHandler);
+	});
+
+	it('runs the first user setup through textmode setup after grid initialization', async () => {
+		let librarySetup: (() => Promise<void>) | undefined;
+		mocks.instance.setup.mockImplementation((callback: () => Promise<void>) => {
+			librarySetup = callback;
+		});
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+		manager.init();
+
+		const userSetup = vi.fn(() => {
+			expect(mocks.instance.grid?.cols).toBe(80);
+		});
+		const running = manager.runUserSetup(userSetup);
+		expect(mocks.instance.noLoop).not.toHaveBeenCalled();
+		expect(userSetup).not.toHaveBeenCalled();
+
+		mocks.instance.grid = { cols: 80, rows: 30 };
+		await librarySetup?.();
+		await running;
+
+		expect(mocks.instance.setup).toHaveBeenCalledTimes(1);
+		expect(mocks.instance.noLoop).toHaveBeenCalledTimes(1);
+		expect(userSetup).toHaveBeenCalledTimes(1);
+	});
+
+	it('runs later setups once per execution and keeps setup errors out of textmode initialization', async () => {
+		let librarySetup: (() => Promise<void>) | undefined;
+		mocks.instance.setup.mockImplementation((callback: () => Promise<void>) => {
+			librarySetup = callback;
+		});
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+		manager.init();
+
+		const first = manager.runUserSetup(async () => {
+			throw new Error('setup exploded');
+		});
+		await expect(librarySetup?.()).resolves.toBeUndefined();
+		await expect(first).rejects.toThrow('setup exploded');
+
+		const secondSetup = vi.fn();
+		await expect(manager.runUserSetup(secondSetup)).resolves.toBeUndefined();
+
+		expect(secondSetup).toHaveBeenCalledTimes(1);
+		expect(mocks.instance.noLoop).toHaveBeenCalledTimes(2);
+	});
+
+	it('releases the public setup bridge when disposed before an execution arrives', async () => {
+		let librarySetup: (() => Promise<void>) | undefined;
+		mocks.instance.setup.mockImplementation((callback: () => Promise<void>) => {
+			librarySetup = callback;
+		});
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+		manager.init();
+
+		const initializing = librarySetup?.();
+		manager.dispose();
+
+		await expect(initializing).resolves.toBeUndefined();
+	});
+
+	it('can create a fresh textmode instance after disposal', async () => {
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+
+		manager.init();
+		manager.dispose();
+		manager.init();
+
+		expect(mocks.textmodeCreate).toHaveBeenCalledTimes(2);
+		expect(mocks.instance.destroy).toHaveBeenCalledOnce();
+		expect(document.body.appendChild).toHaveBeenCalledTimes(2);
 	});
 });

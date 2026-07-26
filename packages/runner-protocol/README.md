@@ -45,6 +45,9 @@ function runMessage(message: ParentToRunnerMessage): void {
 		case 'RUN_CODE':
 			runCode(message.code, message.requestId);
 			break;
+		case 'RESET_RUNTIME':
+			resetRuntime(message.code, message.requestId);
+			break;
 		case 'PING':
 			port.postMessage({ type: 'PONG', nonce: message.nonce, timestamp: Date.now() });
 			break;
@@ -93,11 +96,16 @@ After a successful handshake, the runner responds with:
 The current capability payload is:
 
 ```ts
-{ heartbeat: true }
+{ heartbeat: true, runtimeReset: true, userActivationPrompt: true }
 ```
 
 Messages sent after that point use the `ParentToRunnerMessage` and
 `RunnerToParentMessage` unions.
+
+Runners that advertise `userActivationPrompt` may emit
+`USER_ACTIVATION_REQUIRED` when a browser requires trusted interaction inside
+the iframe. Hosts should expose the frame for interaction until the runner
+answers with `USER_INTERACTION`.
 
 ## Validation
 

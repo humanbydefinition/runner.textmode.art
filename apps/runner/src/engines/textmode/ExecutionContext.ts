@@ -2,6 +2,7 @@ import type { ExecutionResult, ValidationResult } from './textmode.types';
 import { SafeProxyFactory } from './SafeProxyFactory';
 import { ErrorReporter } from '@/engines/textmode/ErrorReporter';
 import { normalizeError } from '@/core/errors/normalizeError';
+import type { AudioReceiver } from '@/engines/textmode/AudioReceiver';
 import {
     src,
     osc,
@@ -17,6 +18,7 @@ import {
     SynthPlugin,
 } from 'textmode.synth.js';
 import type { Textmodifier } from 'textmode.js';
+import { ExecutionResourceStack } from './ExecutionResourceStack';
 
 /**
  * Synth exports to provide to user code
@@ -39,8 +41,12 @@ const SYNTH_GLOBALS = {
 export interface ExecutionContextOptions {
     /** Get the textmode instance */
     getTextmode: () => Textmodifier | null;
+    /** Run an optional setup callback through the textmode execution lifecycle. */
+    runTextmodeSetup: (callback?: () => void | Promise<void>) => Promise<void>;
     /** Error reporter instance */
     errorReporter: ErrorReporter;
+    /** Audio receiver for audio-reactive sketches */
+    audioReceiver: AudioReceiver;
 }
 
 /**
@@ -48,7 +54,7 @@ export interface ExecutionContextOptions {
  * Handles the creation of globals, execution of user code, and cleanup.
  */
 export class ExecutionContext {
-    private userDisposers: Array<() => void> = [];
+    private resources: ExecutionResourceStack | null = null;
     private drawErrorOccurred = false;
     private proxyFactory: SafeProxyFactory;
     private options: ExecutionContextOptions;
@@ -85,15 +91,39 @@ export class ExecutionContext {
 
         // Dispose previous execution
         this.dispose();
+        const resources = new ExecutionResourceStack();
+        this.resources = resources;
 
         // Get textmode and create safe proxy
         const t = this.options.getTextmode();
-        const safeT = t ? this.proxyFactory.createTextmodeProxy(t) : null;
+        let hasSetupCallback = false;
+        let setupCallback: unknown;
+        const safeT = t
+            ? this.proxyFactory.createTextmodeProxy(t, {
+                  onSetup: (callback) => {
+                      hasSetupCallback = true;
+                      setupCallback = callback;
+                  },
+                  onResource: (resource) => resources.use(resource),
+              })
+            : null;
+        const audioReceiver = this.options.audioReceiver;
+        const audio = {
+            fft: () => audioReceiver.getFft(),
+            waveform: () => audioReceiver.getWaveform(),
+            bass: () => audioReceiver.getBass(),
+            mid: () => audioReceiver.getMid(),
+            high: () => audioReceiver.getHigh(),
+            volume: () => audioReceiver.getVolume(),
+            timestamp: () => audioReceiver.getTimestamp(),
+            hasData: () => audioReceiver.hasData(),
+        };
 
         // Prepare globals
         const globals: Record<string, unknown> = {
             t: safeT,
-            onDispose: (callback: unknown) => this.registerUserDispose(callback),
+            audio,
+            onDispose: (callback: unknown) => this.registerUserDispose(resources, callback),
             ...SYNTH_GLOBALS,
         };
 
@@ -103,12 +133,15 @@ export class ExecutionContext {
         try {
             // Create and execute async function wrapper to support top-level await
             const fn = new Function(...globalKeys, this.wrapUserCode(code));
-            const result = await fn(...globalValues);
+            await fn(...globalValues);
 
-            // Preserve the existing returned-dispose callback behavior.
-            if (typeof result === 'function') {
-                this.userDisposers.push(result);
+            if (hasSetupCallback && typeof setupCallback !== 'function') {
+                throw new TypeError('t.setup expects a function');
             }
+
+            await this.options.runTextmodeSetup(
+                hasSetupCallback ? (setupCallback as () => void | Promise<void>) : undefined
+            );
 
             return {
                 success: true,
@@ -129,33 +162,28 @@ export class ExecutionContext {
         return `"use strict";\nreturn (async () => {\n${code}\n})();`;
     }
 
-    /**
-     * Check if a draw error has occurred
-     */
-    hasDrawError(): boolean {
-        return this.drawErrorOccurred;
-    }
-
-    private registerUserDispose(callback: unknown): void {
+    private registerUserDispose(resources: ExecutionResourceStack, callback: unknown): void {
         if (typeof callback !== 'function') {
             throw new TypeError('onDispose expects a function');
         }
 
-        this.userDisposers.push(callback as () => void);
+        resources.defer(callback as () => void);
     }
 
     /**
      * Dispose current execution resources
      */
     dispose(): void {
-        const disposers = this.userDisposers.splice(0).reverse();
+        const resources = this.resources;
+        this.resources = null;
+        if (!resources) return;
 
-        for (const dispose of disposers) {
-            try {
-                dispose();
-            } catch (e) {
-                console.warn('Error in user dispose:', e);
-            }
+        try {
+            this.options.getTextmode()?.resetShader();
+        } catch (error) {
+            console.warn('Error resetting sketch shader during disposal:', error);
         }
+
+        resources.dispose();
     }
 }

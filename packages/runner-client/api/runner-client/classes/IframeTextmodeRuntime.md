@@ -148,10 +148,16 @@ Disposes the iframe connection and rejects pending requests.
 ### reconnect()
 
 ```ts
-reconnect(): Promise<boolean>;
+reconnect(options?): Promise<boolean>;
 ```
 
-Recreates the iframe and reruns the last requested code when available.
+Recreates the iframe and optionally reruns the last requested code.
+
+#### Parameters
+
+| Parameter | Type | Description |
+| ------ | ------ | ------ |
+| `options` | [`RunnerReconnectOptions`](../interfaces/RunnerReconnectOptions.md) | Reconnect behavior. The last code is rerun by default. |
 
 #### Returns
 
@@ -180,7 +186,7 @@ Some browsers use this to unlock normal iframe animation cadence.
 ### runCode()
 
 ```ts
-runCode(code, options?): Promise<boolean>;
+runCode(code): Promise<boolean>;
 ```
 
 Executes code in the runner.
@@ -190,9 +196,52 @@ Executes code in the runner.
 | Parameter | Type |
 | ------ | ------ |
 | `code` | `string` |
-| `options` | \{ `softReset?`: `boolean`; \} |
-| `options.softReset?` | `boolean` |
 
 #### Returns
 
 `Promise`\<`boolean`\>
+
+***
+
+### resetRuntime()
+
+```ts
+resetRuntime(code): Promise<boolean>;
+```
+
+Rebuilds the textmode runtime while preserving the current iframe document.
+
+Older runners fall back to a full reconnect followed by one code execution.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `code` | `string` |
+
+#### Returns
+
+`Promise`\<`boolean`\>
+
+***
+
+### sendAudioData()
+
+```ts
+sendAudioData(data): boolean;
+```
+
+Sends a fire-and-forget audio analysis frame to the runner.
+
+Audio frames are intentionally not request-tracked: hosts may send them at
+animation-frame cadence, and stale frames can be safely dropped.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `data` | `Omit`\<`AudioDataMessage`, `"type"`\> |
+
+#### Returns
+
+`boolean`
