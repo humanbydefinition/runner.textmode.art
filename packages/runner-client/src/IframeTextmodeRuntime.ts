@@ -15,6 +15,7 @@ import {
 	type IframeMountMode,
 	type IframeSandboxToken,
 	type IframeTextmodeRuntimeOptions,
+	type RunnerProbeOptions,
 	type RunnerReconnectOptions,
 } from './options';
 import type { RunnerRuntimeStatus } from './status';
@@ -248,11 +249,27 @@ export class IframeTextmodeRuntime {
 	 * @category Runtime
 	 */
 	async runCode(code: string): Promise<boolean> {
-		this.lastRequestedCode = code;
 		const requestId = this.createRequestId('run');
 		const message = { type: 'RUN_CODE', requestId, code } as const;
 
 		await this.request<RunOkMessage>(message);
+		this.lastRequestedCode = code;
+		return true;
+	}
+
+	/**
+	 * Executes code as a transactional candidate.
+	 *
+	 * Failed and timed-out probes do not replace the code used by reconnect.
+	 *
+	 * @category Runtime
+	 */
+	async probeCode(code: string, options: RunnerProbeOptions = {}): Promise<boolean> {
+		const requestId = this.createRequestId('probe');
+		const message = { type: 'RUN_CODE', requestId, code } as const;
+
+		await this.request<RunOkMessage>(message, options.timeoutMs ?? this.requestTimeoutMs);
+		this.lastRequestedCode = code;
 		return true;
 	}
 
@@ -264,8 +281,6 @@ export class IframeTextmodeRuntime {
 	 * @category Runtime
 	 */
 	async resetRuntime(code: string): Promise<boolean> {
-		this.lastRequestedCode = code;
-
 		if (this.capabilities?.runtimeReset !== true) {
 			const reconnected = await this.reconnect({ rerun: false });
 			return reconnected ? this.runCode(code) : false;
@@ -273,6 +288,7 @@ export class IframeTextmodeRuntime {
 
 		const requestId = this.createRequestId('reset');
 		await this.request<RunOkMessage>({ type: 'RESET_RUNTIME', requestId, code });
+		this.lastRequestedCode = code;
 		return true;
 	}
 

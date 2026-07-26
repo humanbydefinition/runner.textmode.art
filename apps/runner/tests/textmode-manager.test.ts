@@ -63,15 +63,20 @@ vi.mock('textmode.synth.js', () => ({
 	setGlobalErrorCallback: vi.fn(),
 }));
 
+let resizeHandler: (() => void) | undefined;
+
 describe('TextmodeManager', () => {
 	beforeEach(() => {
+		resizeHandler = undefined;
 		mocks.instance.frameCount = 123;
 		mocks.instance.grid = undefined;
 		mocks.instance.secs = 4;
 		vi.stubGlobal('window', {
 			innerWidth: 800,
 			innerHeight: 600,
-			addEventListener: vi.fn(),
+			addEventListener: vi.fn((eventName: string, handler: () => void) => {
+				if (eventName === 'resize') resizeHandler = handler;
+			}),
 			removeEventListener: vi.fn(),
 		});
 		vi.stubGlobal('document', {
@@ -100,6 +105,21 @@ describe('TextmodeManager', () => {
 
 		expect(mocks.instance.frameCount).toBe(123);
 		expect(mocks.instance.secs).toBe(4);
+	});
+
+	it('resizes the textmode canvas to the viewport without user sketch code', async () => {
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+		manager.init();
+
+		Object.assign(window, { innerWidth: 1024, innerHeight: 768 });
+		resizeHandler?.();
+
+		expect(mocks.instance.resizeCanvas).toHaveBeenCalledOnce();
+		expect(mocks.instance.resizeCanvas).toHaveBeenCalledWith(1024, 768);
+
+		manager.dispose();
+		expect(window.removeEventListener).toHaveBeenCalledWith('resize', resizeHandler);
 	});
 
 	it('runs the first user setup through textmode setup after grid initialization', async () => {

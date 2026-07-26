@@ -374,6 +374,121 @@ describe('@textmode/runner-client', () => {
 		runtime.dispose();
 	});
 
+	it('keeps the last successful code when a probe fails', async () => {
+		const { runtime, env } = await connectRuntime();
+
+		const baseline = runtime.runCode('working sketch');
+		const baselineMessage = env.channel.port1.sent.at(-1) as { requestId: string };
+		env.channel.port1.deliver({
+			type: 'RUN_OK',
+			timestamp: Date.now(),
+			requestId: baselineMessage.requestId,
+		});
+		await baseline;
+
+		const probe = runtime.probeCode('broken sketch');
+		const probeMessage = env.channel.port1.sent.at(-1) as { requestId: string };
+		env.channel.port1.deliver({
+			type: 'RUN_ERROR',
+			message: "Cannot read properties of undefined (reading 'width')",
+			requestId: probeMessage.requestId,
+		});
+		await expect(probe).rejects.toThrow("Cannot read properties of undefined (reading 'width')");
+
+		const reconnect = runtime.reconnect();
+		const reconnectedIframe = env.createdIframes.at(-1)!;
+		reconnectedIframe.dispatch('load');
+		env.channel.port1.deliver({ type: 'READY', capabilities });
+		await reconnect;
+		await Promise.resolve();
+
+		expect(env.channel.port1.sent.at(-1)).toMatchObject({
+			type: 'RUN_CODE',
+			code: 'working sketch',
+		});
+		const rerunMessage = env.channel.port1.sent.at(-1) as { requestId: string };
+		env.channel.port1.deliver({
+			type: 'RUN_OK',
+			timestamp: Date.now(),
+			requestId: rerunMessage.requestId,
+		});
+		await Promise.resolve();
+		runtime.dispose();
+	});
+
+	it('adopts a successful probe as the reconnect source', async () => {
+		const { runtime, env } = await connectRuntime();
+
+		const probe = runtime.probeCode('candidate sketch', { timeoutMs: 250 });
+		const probeMessage = env.channel.port1.sent.at(-1) as { requestId: string };
+		expect(probeMessage).toMatchObject({ type: 'RUN_CODE', code: 'candidate sketch' });
+		env.channel.port1.deliver({
+			type: 'RUN_OK',
+			timestamp: Date.now(),
+			requestId: probeMessage.requestId,
+		});
+		await expect(probe).resolves.toBe(true);
+
+		const reconnect = runtime.reconnect();
+		const reconnectedIframe = env.createdIframes.at(-1)!;
+		reconnectedIframe.dispatch('load');
+		env.channel.port1.deliver({ type: 'READY', capabilities });
+		await reconnect;
+		await Promise.resolve();
+
+		expect(env.channel.port1.sent.at(-1)).toMatchObject({
+			type: 'RUN_CODE',
+			code: 'candidate sketch',
+		});
+		const rerunMessage = env.channel.port1.sent.at(-1) as { requestId: string };
+		env.channel.port1.deliver({
+			type: 'RUN_OK',
+			timestamp: Date.now(),
+			requestId: rerunMessage.requestId,
+		});
+		await Promise.resolve();
+		runtime.dispose();
+	});
+
+	it('keeps the last successful code when a probe times out', async () => {
+		const { runtime, env } = await connectRuntime();
+
+		const baseline = runtime.runCode('working sketch');
+		const baselineMessage = env.channel.port1.sent.at(-1) as { requestId: string };
+		env.channel.port1.deliver({
+			type: 'RUN_OK',
+			timestamp: Date.now(),
+			requestId: baselineMessage.requestId,
+		});
+		await baseline;
+
+		const probe = runtime.probeCode('hung sketch', { timeoutMs: 100 });
+		const rejected = expect(probe).rejects.toThrow('runner request timed out: RUN_CODE');
+		vi.advanceTimersByTime(100);
+		await rejected;
+		expect(runtime.status).toBe('ready');
+
+		const reconnect = runtime.reconnect();
+		const reconnectedIframe = env.createdIframes.at(-1)!;
+		reconnectedIframe.dispatch('load');
+		env.channel.port1.deliver({ type: 'READY', capabilities });
+		await reconnect;
+		await Promise.resolve();
+
+		expect(env.channel.port1.sent.at(-1)).toMatchObject({
+			type: 'RUN_CODE',
+			code: 'working sketch',
+		});
+		const rerunMessage = env.channel.port1.sent.at(-1) as { requestId: string };
+		env.channel.port1.deliver({
+			type: 'RUN_OK',
+			timestamp: Date.now(),
+			requestId: rerunMessage.requestId,
+		});
+		await Promise.resolve();
+		runtime.dispose();
+	});
+
 	it('resets the runtime without replacing the activated iframe document', async () => {
 		const { runtime, env } = await connectRuntime();
 		const originalFrame = runtime.frame;

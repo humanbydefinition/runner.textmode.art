@@ -27,6 +27,14 @@ export interface RunnerReconnectOptions {
 }
 
 /**
+ * Controls a transactional code probe.
+ */
+export interface RunnerProbeOptions {
+	/** Request timeout for the probe. Defaults to the runtime request timeout. */
+	timeoutMs?: number;
+}
+
+/**
  * Default sandbox tokens used by the runner iframe.
  *
  * The default deliberately excludes `allow-downloads`; downloads should be
