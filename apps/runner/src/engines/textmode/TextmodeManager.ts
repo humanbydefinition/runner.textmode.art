@@ -1,5 +1,5 @@
 
-import { textmode, Textmodifier } from 'textmode.js';
+import { textmode, Textmodifier, LayerBlendMode } from 'textmode.js';
 import { ExportPlugin } from 'textmode.export.js';
 import { FigletPlugin } from 'textmode.figlet.js';
 import { SynthPlugin, setGlobalErrorCallback } from 'textmode.synth.js';
@@ -182,7 +182,7 @@ export class TextmodeManager {
             base.draw(() => { });
             base.fontSize(this.settings.fontSize);
             base.opacity(1);
-            base.blendMode('normal');
+            base.blendMode(LayerBlendMode.NORMAL);
             base.offset(0, 0);
             base.rotateZ(0);
             (base as unknown as { bpm?: (value: number) => void }).bpm?.(60);
