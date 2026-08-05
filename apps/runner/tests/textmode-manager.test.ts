@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => {
 	const instance = {
 		canvas: { remove: vi.fn() },
 		destroy: vi.fn(),
+		exportOverlay: { hide: vi.fn() },
 		frameCount: 123,
 		frameRate: vi.fn(),
 		grid: undefined as { cols: number; rows: number } | undefined,
@@ -47,7 +48,7 @@ vi.mock('textmode.js', () => ({
 }));
 
 vi.mock('textmode.export.js', () => ({
-	createTextmodeExportPlugin: vi.fn(() => ({ name: 'export' })),
+	ExportPlugin: { name: 'export' },
 }));
 
 vi.mock('textmode.figlet.js', () => ({

@@ -84,7 +84,6 @@ describe('SafeProxyFactory', () => {
 		const framebuffer = { dispose: vi.fn() };
 		const texture = { dispose: vi.fn() };
 		const materialShader = { dispose: vi.fn() };
-		const filterShader = { dispose: vi.fn() };
 		const shader = { dispose: vi.fn() };
 		const onResource = vi.fn();
 		const target = {
@@ -95,7 +94,6 @@ describe('SafeProxyFactory', () => {
 			createFramebuffer: vi.fn(() => framebuffer),
 			createTexture: vi.fn(() => texture),
 			createMaterialShader: vi.fn(async () => materialShader),
-			createFilterShader: vi.fn(async () => filterShader),
 			createShader: vi.fn(async () => shader),
 			layers: { base: {}, add: vi.fn(), all: [] },
 		};
@@ -111,14 +109,12 @@ describe('SafeProxyFactory', () => {
 		expect(proxy.createFramebuffer({})).toBe(framebuffer);
 		expect(proxy.createTexture({} as HTMLCanvasElement)).toBe(texture);
 		await expect(proxy.createMaterialShader('material')).resolves.toBe(materialShader);
-		await expect(proxy.createFilterShader('filter')).resolves.toBe(filterShader);
 		await expect(proxy.createShader('vertex', 'fragment')).resolves.toBe(shader);
 
 		expect(onResource.mock.calls.map(([resource]) => resource)).toEqual([
 			framebuffer,
 			texture,
 			materialShader,
-			filterShader,
 			shader,
 		]);
 	});
