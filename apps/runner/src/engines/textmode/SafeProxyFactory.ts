@@ -17,7 +17,6 @@ export interface TextmodeProxyExecutionHooks {
 const EXECUTION_RESOURCE_FACTORIES = new Set([
     'createFramebuffer',
     'createMaterialShader',
-    'createFilterShader',
     'createShader',
     'createTexture',
 ]);

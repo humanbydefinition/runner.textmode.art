@@ -1,6 +1,6 @@
 
 import { textmode, Textmodifier } from 'textmode.js';
-import { createTextmodeExportPlugin } from 'textmode.export.js';
+import { ExportPlugin } from 'textmode.export.js';
 import { FigletPlugin } from 'textmode.figlet.js';
 import { SynthPlugin, setGlobalErrorCallback } from 'textmode.synth.js';
 import { FiltersPlugin } from 'textmode.filters.js';
@@ -73,10 +73,13 @@ export class TextmodeManager {
             height: this.settings.height,
             fontSize: this.settings.fontSize,
             frameRate: this.settings.frameRate,
-            plugins: [createTextmodeExportPlugin({ overlay: false }), SynthPlugin, FiltersPlugin, FigletPlugin],
+            plugins: [ExportPlugin, SynthPlugin, FiltersPlugin, FigletPlugin],
         });
 
         const instance = this.instance;
+
+        instance.exportOverlay.hide();
+
         void instance.setup(async () => {
             const request = await initialSetupRequest;
 
