@@ -11,6 +11,7 @@
         "dev": "npm run dev -w @textmode/runner-app",
         "build": "npm run build -w @textmode/runner-protocol && npm run build -w @textmode/runner-client && npm run build -w @textmode/runner-app",
         "preview": "npm run preview -w @textmode/runner-app",
+        "check": "npm run check-types && npm run lint && npm run test && npm run build",
         "check-types": "tsc -b",
         "lint": "npm run lint --workspaces --if-present",
         "test": "npm run test --workspaces --if-present",
