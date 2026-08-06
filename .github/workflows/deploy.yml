@@ -1,53 +1,62 @@
-name: Deploy GitHub Pages
+name: Deploy runner.textmode.art to GitHub Pages
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
 
 permissions:
-  contents: read
+    contents: read
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+    group: pages
+    cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    build:
+        runs-on: ubuntu-24.04
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
 
-      - name: Install dependencies
-        run: npm ci
+            - name: Setup Node
+              uses: actions/setup-node@v7
+              with:
+                  node-version-file: .nvmrc
+                  cache: npm
 
-      - name: Build
-        run: npm run build
-        env:
-          VITE_RUNNER_PARENT_ORIGINS: https://synth.textmode.art,https://editor.textmode.art
+            - name: Report toolchain
+              run: node --version && npm --version
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: apps/runner/dist
+            - name: Install dependencies
+              run: npm ci
 
-  deploy:
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+            - name: Check
+              run: npm run check
+              env:
+                  VITE_RUNNER_PARENT_ORIGINS: https://synth.textmode.art,https://editor.textmode.art
+                  VITE_RUNNER_FALLBACK_URL: https://editor.textmode.art
+
+            - name: Upload Pages artifact
+              uses: actions/upload-pages-artifact@v5
+              with:
+                  path: apps/runner/dist
+
+    deploy:
+        permissions:
+            pages: write
+            id-token: write
+
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+
+        runs-on: ubuntu-latest
+        needs: build
+
+        steps:
+            - name: Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@v5
