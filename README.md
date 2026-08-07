@@ -52,7 +52,7 @@ with no local toolchain required.
 |:--|:--|:--|
 | [`apps/runner`](./apps/runner) | Hosted Vite app deployed to [runner.textmode.art](https://runner.textmode.art). | AGPL-3.0 |
 | [`packages/runner-protocol`](./packages/runner-protocol) | Shared wire protocol types, capabilities, and runtime validators. | CC0-1.0 |
-| [`packages/runner-client`](./packages/runner-client) | Browser iframe client used by host apps to mount, run, reconnect, and dispose the runner. | AGPL-3.0 |
+| [`packages/runner-client`](./packages/runner-client) | Browser iframe client for embedding the runner in host apps. | AGPL-3.0 |
 
 Public package imports are root-only:
 
