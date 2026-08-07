@@ -68,4 +68,4 @@ The app includes [`public/CNAME`](./public/CNAME), which is copied into `dist` d
 
 ## License
 
-AGPL-3.0-or-later. See [LICENSE](./LICENSE).
+AGPL-3.0. See [LICENSE](./LICENSE).
