@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img alt="runner.textmode.art — sandboxed textmode runtime" src=".github/assets/readme-og.png" />
+<img alt="runner.textmode.art: sandboxed textmode runtime" src=".github/assets/readme-og.png" />
 
 | [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/) | [![docs](https://img.shields.io/badge/docs-vitepress-646cff?logo=vitepress&logoColor=white)](https://code.textmode.art/) [![Discord](https://img.shields.io/discord/1357070706181017691?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/sjrw8QXNks) | [![ko-fi](https://shields.io/badge/ko--fi-donate-ff5f5f?logo=ko-fi)](https://ko-fi.com/V7V8JG2FY) [![GitHub-sponsors](https://img.shields.io/badge/sponsor-30363D?logo=GitHub-Sponsors&logoColor=#EA4AAA)](https://github.com/sponsors/humanbydefinition) |
 |:-------------|:-------------|:-------------|
@@ -19,7 +19,7 @@ alongside the browser packages host apps use to embed it: the
 Host apps like [editor.textmode.art](https://editor.textmode.art/) mount the
 runner to execute user sketches in an isolated browser context, away from the
 host document. Inside the sandbox, the runner boots a `textmode.js` rendering
-environment with the textmode plugin stack — synth, figlet, filters, and export —
+environment with the textmode plugin stack (synth, figlet, filters, and export)
 and talks to its host through a small typed message protocol with capability
 negotiation, heartbeats, and in-place runtime resets.
 
@@ -29,8 +29,8 @@ negotiation, heartbeats, and in-place runtime resets.
   away from the host document, behind a strict parent-origin allowlist and a
   minimal iframe sandbox.
 - **textmode.js runtime:** Boots a [`textmode.js`](https://github.com/humanbydefinition/textmode.js)
-  rendering environment with the official plugin stack — synth, figlet,
-  filters, and export.
+  rendering environment with the official plugin stack: synth, figlet, filters,
+  and export.
 - **Typed message protocol:** Hosts and the runner exchange messages over a
   [`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort)
   through a shared, validated wire contract with capability negotiation.
@@ -43,7 +43,7 @@ negotiation, heartbeats, and in-place runtime resets.
 ## Try it online
 
 The runner powers the sketches in [editor.textmode.art](https://editor.textmode.art/).
-Open the editor and run any sketch — the sandboxed runtime handles execution
+Open the editor and run any sketch. The sandboxed runtime handles execution
 with no local toolchain required.
 
 ## Workspaces
@@ -136,12 +136,3 @@ This monorepo contains packages under different licenses:
 - [`packages/runner-protocol`](./packages/runner-protocol/LICENSE): CC0-1.0
 
 The root [`LICENSE`](./LICENSE) covers the AGPL-licensed parts of the repository.
-
-## Acknowledgements
-
-This project targets the [`textmode.js`](https://github.com/humanbydefinition/textmode.js)
-sketch API and bundles the official textmode plugin stack:
-
-- **[textmode.synth.js](https://github.com/humanbydefinition/textmode.synth.js)** -
-  The audio-reactive synthesis add-on, licensed under
-  [AGPL-3.0](https://github.com/humanbydefinition/textmode.synth.js/blob/main/LICENSE).
