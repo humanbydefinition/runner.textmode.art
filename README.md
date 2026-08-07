@@ -19,9 +19,32 @@ alongside the browser packages host apps use to embed it: the
 Host apps like [editor.textmode.art](https://editor.textmode.art/) mount the
 runner to execute user sketches in an isolated browser context, away from the
 host document. Inside the sandbox, the runner boots a `textmode.js` rendering
-environment with the textmode plugin stack - synth, figlet, filters, and export -
+environment with the textmode plugin stack — synth, figlet, filters, and export —
 and talks to its host through a small typed message protocol with capability
 negotiation, heartbeats, and in-place runtime resets.
+
+## Features
+
+- **Sandboxed execution:** Runs user sketches in an isolated browser context,
+  away from the host document, behind a strict parent-origin allowlist and a
+  minimal iframe sandbox.
+- **textmode.js runtime:** Boots a [`textmode.js`](https://github.com/humanbydefinition/textmode.js)
+  rendering environment with the official plugin stack — synth, figlet,
+  filters, and export.
+- **Typed message protocol:** Hosts and the runner exchange messages over a
+  [`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort)
+  through a shared, validated wire contract with capability negotiation.
+- **Live runtime control:** `runCode` swaps the active sketch in place, and
+  `resetRuntime` rebuilds the textmode runtime without replacing the iframe
+  document.
+- **Heartbeat monitoring:** The runner reports liveness and status so hosts can
+  surface connectivity to users.
+
+## Try it online
+
+The runner powers the sketches in [editor.textmode.art](https://editor.textmode.art/).
+Open the editor and run any sketch — the sandboxed runtime handles execution
+with no local toolchain required.
 
 ## Workspaces
 
@@ -55,10 +78,7 @@ npm run dev
 Run the full workspace checks:
 
 ```sh
-npm run check-types
-npm run lint
-npm run test
-npm run build
+npm run check
 ```
 
 Generate package API documentation:
@@ -69,22 +89,20 @@ npm run build:docs
 
 ## Deployment
 
-GitHub Pages deployment is handled by [`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml).
+GitHub Pages deployment is handled by
+[`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml). It runs the
+project checks, builds the workspace with production host origins, and uploads
+`apps/runner/dist` as the Pages artifact.
 
-The workflow:
+The runner app has its own deployment and environment notes in
+[`apps/runner/README.md`](./apps/runner/README.md).
 
-- installs workspace dependencies with `npm ci`
-- builds protocol, client, and runner workspaces with `npm run build`
-- sets `VITE_RUNNER_PARENT_ORIGINS` for production host apps
-- uploads `apps/runner/dist` as the Pages artifact
+## Publishing
 
-The runner app has its own deployment and environment notes in [`apps/runner/README.md`](./apps/runner/README.md).
+`@textmode/runner-protocol` and `@textmode/runner-client` are published from
+this monorepo.
 
-## Package Releases
-
-`@textmode/runner-protocol` and `@textmode/runner-client` are published from this monorepo.
-
-Before publishing either package, verify the tarball contents:
+Verify the tarball contents before publishing either package:
 
 ```sh
 npm pack --dry-run -w @textmode/runner-protocol
@@ -98,11 +116,20 @@ npm publish --access public -w @textmode/runner-protocol
 npm publish --access public -w @textmode/runner-client
 ```
 
-Publish `@textmode/runner-protocol` before `@textmode/runner-client` when releasing matching first-party versions, because the client depends on the protocol package.
+Publish `@textmode/runner-protocol` before `@textmode/runner-client` when
+releasing matching first-party versions, because the client depends on the
+protocol package.
+
+## Contributing
+
+Thank you for considering contributing to this project!
+
+Please read the [Contributing Guide](https://code.textmode.art/docs/contributing/code)
+and the [Code of Conduct](./CODE_OF_CONDUCT.md) before getting started.
 
 ## License
 
-This monorepo contains packages with different licenses:
+This monorepo contains packages under different licenses:
 
 - [`apps/runner`](./apps/runner/LICENSE): AGPL-3.0
 - [`packages/runner-client`](./packages/runner-client/LICENSE): AGPL-3.0
@@ -110,10 +137,11 @@ This monorepo contains packages with different licenses:
 
 The root [`LICENSE`](./LICENSE) covers the AGPL-licensed parts of the repository.
 
-### Acknowledgements
+## Acknowledgements
 
-This project targets the [`textmode.js`](https://github.com/humanbydefinition/textmode.js) sketch API.
+This project targets the [`textmode.js`](https://github.com/humanbydefinition/textmode.js)
+sketch API and bundles the official textmode plugin stack:
 
-AGPL-licensed dependency acknowledgement:
-
-- **[textmode.synth.js](https://github.com/humanbydefinition/textmode.synth.js)** - AGPL-3.0
+- **[textmode.synth.js](https://github.com/humanbydefinition/textmode.synth.js)** -
+  The audio-reactive synthesis add-on, licensed under
+  [AGPL-3.0](https://github.com/humanbydefinition/textmode.synth.js/blob/main/LICENSE).
