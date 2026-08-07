@@ -1,16 +1,42 @@
 # @textmode/runner-client
 
-Browser iframe runtime client for the hosted textmode runner.
+<div align="center">
 
-This package gives any browser host app a typed runtime API for mounting the
-runner iframe, performing the current generic protocol handshake, routing
-request/response messages, monitoring heartbeat status, running code,
-reconnecting, and disposing the transport.
+<img alt="@textmode/runner-client: embed textmode from your app" src=".github/assets/readme-og.png" />
 
-It does not execute textmode.js sketches directly. It controls a runner app at
-the `runnerUrl` you provide.
+| [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) | [![docs](https://img.shields.io/badge/docs-vitepress-646cff?logo=vitepress&logoColor=white)](https://code.textmode.art/) [![Discord](https://img.shields.io/discord/1357070706181017691?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/sjrw8QXNks) | [![ko-fi](https://shields.io/badge/ko--fi-donate-ff5f5f?logo=ko-fi)](https://ko-fi.com/V7V8JG2FY) [![GitHub-sponsors](https://img.shields.io/badge/sponsor-30363D?logo=GitHub-Sponsors&logoColor=#EA4AAA)](https://github.com/sponsors/humanbydefinition) |
+|:-------------|:-------------|:-------------|
 
-## Install
+</div>
+
+`@textmode/runner-client` is a browser iframe runtime client for the hosted
+[`textmode.js`](https://github.com/humanbydefinition/textmode.js) runner. It
+gives any browser host app a typed runtime API for mounting the runner iframe,
+performing the generic protocol handshake, routing request/response messages,
+monitoring heartbeat status, running code, reconnecting, and disposing the
+transport.
+
+Use it to embed the sandboxed runner at [runner.textmode.art](https://runner.textmode.art/)
+from your own host app. It does not execute `textmode.js` sketches directly; it
+controls a runner app at the `runnerUrl` you provide.
+
+## Features
+
+- **Typed runtime API** - Mount, run, reconnect, and dispose the runner through
+  one `IframeTextmodeRuntime` instance.
+- **Sandboxed iframe** - Mounts the runner under a minimal iframe sandbox and
+  refuses unsafe `allow-scripts` plus `allow-same-origin` combinations on the
+  parent origin.
+- **Request/response routing** - Matches `runCode` and other requests to their
+  responses across the `MessagePort` transport.
+- **Heartbeat monitoring** - Reports runner liveness and status for host UI
+  state.
+- **In-place runtime resets** - `resetRuntime` rebuilds the textmode runtime
+  without replacing the iframe document or transport.
+- **WebKit activation handling** - Surfaces `USER_ACTIVATION_REQUIRED` so hosts
+  can expose the frame for a trusted child-frame interaction.
+
+## Installation
 
 ```sh
 npm install @textmode/runner-client
@@ -98,7 +124,8 @@ Typical host apps follow this lifecycle:
 5. Call `reconnect` only when the iframe document or transport must be replaced.
 6. Call `dispose` when the host view is unmounted.
 
-`resetRuntime` falls back to reconnecting when an older runner does not advertise the optional `runtimeReset` capability.
+`resetRuntime` falls back to reconnecting when an older runner does not
+advertise the optional `runtimeReset` capability.
 
 Cross-origin WebKit runners may request one trusted child-frame interaction
 through `onUserActivationRequired`. A host can temporarily expose or elevate
@@ -122,10 +149,22 @@ does not expose a parent-controlled export channel.
 The runtime refuses to start a runner that combines `allow-scripts` and
 `allow-same-origin` on the same origin as the parent page.
 
-## API Docs
+## Related packages
 
-Generated TypeDoc Markdown lives in [`api/runner-client`](./api/runner-client/index.md).
+`@textmode/runner-client` works with the following packages in this repository:
+
+| Package                                                              | Relationship                                      |
+| -------------------------------------------------------------------- | ------------------------------------------------- |
+| [`@textmode/runner-protocol`](../runner-protocol/README.md)          | The wire contract this client speaks              |
+| [`@textmode/runner-app`](../../apps/runner/README.md)                | The sandboxed runner app this client controls     |
+
+## Next steps
+
+- **[Read the runner overview](../../README.md)** for the workspace conventions.
+- **[Browse all packages](../README.md)** to find related runner packages.
+- **[Browse the API docs](./api/runner-client/index.md)** for the generated type reference.
+- **[Visit code.textmode.art](https://code.textmode.art/)** for the ecosystem documentation.
 
 ## License
 
-AGPL-3.0. See [LICENSE](./LICENSE).
+The `@textmode/runner-client` package is licensed under the [AGPL-3.0 License](./LICENSE).
