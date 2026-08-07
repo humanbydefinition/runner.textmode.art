@@ -120,13 +120,6 @@ Publish `@textmode/runner-protocol` before `@textmode/runner-client` when
 releasing matching first-party versions, because the client depends on the
 protocol package.
 
-## Contributing
-
-Thank you for considering contributing to this project!
-
-Please read the [Contributing Guide](https://code.textmode.art/docs/contributing/code)
-and the [Code of Conduct](./CODE_OF_CONDUCT.md) before getting started.
-
 ## License
 
 This monorepo contains packages under different licenses:
