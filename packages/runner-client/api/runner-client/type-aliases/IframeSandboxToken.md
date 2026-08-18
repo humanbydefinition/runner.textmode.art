@@ -1,6 +1,12 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: IframeSandboxToken
+description: Iframe sandbox token supported by the runner client.
+category: Type Aliases
+api: true
+kind: TypeAlias
+lastModified: 2026-08-18
 ---
 
 [@textmode/runner-client](../index.md) / IframeSandboxToken

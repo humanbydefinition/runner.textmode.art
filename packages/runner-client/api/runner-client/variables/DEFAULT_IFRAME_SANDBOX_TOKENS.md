@@ -1,6 +1,12 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: DEFAULT_IFRAME_SANDBOX_TOKENS
+description: Default sandbox tokens used by the runner iframe.
+category: Variables
+api: true
+kind: Variable
+lastModified: 2026-08-18
 ---
 
 [@textmode/runner-client](../index.md) / DEFAULT\_IFRAME\_SANDBOX\_TOKENS

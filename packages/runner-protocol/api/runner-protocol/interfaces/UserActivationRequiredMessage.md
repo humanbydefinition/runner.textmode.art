@@ -1,6 +1,13 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: UserActivationRequiredMessage
+description: Runner request for a trusted interaction inside its cross-origin document.
+category: Interfaces
+api: true
+kind: Interface
+lastModified: 2026-08-18
+isInterface: true
 ---
 
 [@textmode/runner-protocol](../index.md) / UserActivationRequiredMessage

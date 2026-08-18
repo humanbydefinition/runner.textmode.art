@@ -1,6 +1,13 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: ToggleUIMessage
+description: Runner-originated shortcut event requesting host UI visibility changes.
+category: Interfaces
+api: true
+kind: Interface
+lastModified: 2026-08-18
+isInterface: true
 ---
 
 [@textmode/runner-protocol](../index.md) / ToggleUIMessage

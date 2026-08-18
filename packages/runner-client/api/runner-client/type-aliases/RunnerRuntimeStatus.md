@@ -1,6 +1,12 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: RunnerRuntimeStatus
+description: Lifecycle state for an iframe runner connection.
+category: Type Aliases
+api: true
+kind: TypeAlias
+lastModified: 2026-08-18
 ---
 
 [@textmode/runner-client](../index.md) / RunnerRuntimeStatus

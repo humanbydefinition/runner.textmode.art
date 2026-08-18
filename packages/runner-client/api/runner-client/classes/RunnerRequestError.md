@@ -1,6 +1,13 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: RunnerRequestError
+description: Error used when a request-scoped runner execution fails.
+category: Classes
+api: true
+kind: Class
+lastModified: 2026-08-18
+hasConstructor: true
 ---
 
 [@textmode/runner-client](../index.md) / RunnerRequestError
@@ -43,20 +50,6 @@ Error.constructor
 
 ## Properties
 
-### line?
-
-```ts
-readonly optional line?: number;
-```
-
-Optional 1-based source line.
-
-#### Implementation of
-
-[`RunnerExecutionError`](../interfaces/RunnerExecutionError.md).[`line`](../interfaces/RunnerExecutionError.md#property-line)
-
-***
-
 ### column?
 
 ```ts
@@ -68,6 +61,20 @@ Optional 1-based source column.
 #### Implementation of
 
 [`RunnerExecutionError`](../interfaces/RunnerExecutionError.md).[`column`](../interfaces/RunnerExecutionError.md#property-column)
+
+***
+
+### line?
+
+```ts
+readonly optional line?: number;
+```
+
+Optional 1-based source line.
+
+#### Implementation of
+
+[`RunnerExecutionError`](../interfaces/RunnerExecutionError.md).[`line`](../interfaces/RunnerExecutionError.md#property-line)
 
 ***
 

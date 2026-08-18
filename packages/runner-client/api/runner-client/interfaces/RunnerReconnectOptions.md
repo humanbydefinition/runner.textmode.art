@@ -1,6 +1,13 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: RunnerReconnectOptions
+description: Controls how a runner reconnect restores previously requested code.
+category: Interfaces
+api: true
+kind: Interface
+lastModified: 2026-08-18
+isInterface: true
 ---
 
 [@textmode/runner-client](../index.md) / RunnerReconnectOptions

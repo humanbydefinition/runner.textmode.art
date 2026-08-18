@@ -1,6 +1,13 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: PingMessage
+description: Heartbeat request sent by a host app.
+category: Interfaces
+api: true
+kind: Interface
+lastModified: 2026-08-18
+isInterface: true
 ---
 
 [@textmode/runner-protocol](../index.md) / PingMessage
@@ -13,5 +20,5 @@ Heartbeat request sent by a host app.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-type"></a> `type` | `"PING"` | - |
 | <a id="property-nonce"></a> `nonce?` | `string` | Optional nonce echoed by the runner. |
+| <a id="property-type"></a> `type` | `"PING"` | - |
