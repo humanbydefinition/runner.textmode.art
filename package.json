@@ -19,7 +19,7 @@
         "dev:docs": "npm run dev:docs -w @textmode/runner-protocol & npm run dev:docs -w @textmode/runner-client & wait"
     },
     "devDependencies": {
-        "@eslint/js": "^9.39.1",
+        "@eslint/js": "^10.0.1",
         "@types/node": "^24.10.1",
         "eslint": "^9.39.1",
         "eslint-plugin-import": "^2.32.0",
