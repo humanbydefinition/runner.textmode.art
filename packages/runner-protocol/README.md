@@ -1,13 +1,39 @@
 # @textmode/runner-protocol
 
-Shared TypeScript message contract for the hosted textmode runner iframe.
+<div align="center">
 
-This package is the single source of truth for the wire messages exchanged by
-the runner and browser host apps in the textmode.js ecosystem.
-It contains the public message types, capability model, and runtime validators
-used on both sides of the iframe boundary.
+<img alt="@textmode/runner-protocol: speak textmode over the wire" src=".github/assets/readme-og.png" />
 
-## Install
+| [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) | [![docs](https://img.shields.io/badge/docs-vitepress-646cff?logo=vitepress&logoColor=white)](https://code.textmode.art/) [![Discord](https://img.shields.io/discord/1357070706181017691?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/sjrw8QXNks) | [![ko-fi](https://shields.io/badge/ko--fi-donate-ff5f5f?logo=ko-fi)](https://ko-fi.com/V7V8JG2FY) [![GitHub-sponsors](https://img.shields.io/badge/sponsor-30363D?logo=GitHub-Sponsors&logoColor=#EA4AAA)](https://github.com/sponsors/humanbydefinition) |
+|:-------------|:-------------|:-------------|
+
+</div>
+
+`@textmode/runner-protocol` is the shared TypeScript message contract for the
+hosted [`textmode.js`](https://github.com/humanbydefinition/textmode.js) runner
+iframe. It is the single source of truth for the wire messages exchanged by the
+runner and browser host apps in the textmode.js ecosystem, containing the public
+message types, capability model, and runtime validators used on both sides of
+the iframe boundary.
+
+Use it to keep the runner and its host clients on the same validated wire
+contract, with feature availability described through a small capability payload
+instead of runtime version negotiation.
+
+## Features
+
+- **Single source of truth** - The message unions, capability model, and
+  validators shared by the runner and browser host apps.
+- **Capability model** - Feature availability is advertised through
+  `RunnerCapabilities` rather than protocol version negotiation.
+- **Strict runtime validators** - Guards reject untrusted `postMessage` payloads
+  before they are dispatched.
+- **Root-only imports** - The public API imports from the package root only, so
+  internal modules stay free to change.
+- **No version negotiation** - Package semver describes source compatibility;
+  the package describes the one current message shape.
+
+## Installation
 
 ```sh
 npm install @textmode/runner-protocol
@@ -121,10 +147,23 @@ if (!isRunnerMessage(event.data)) {
 The guards reject retired app-identity and protocol-version fields such as
 `client`, `v`, `clients`, and `protocolVersions`.
 
-## API Docs
+## Related packages
 
-Generated TypeDoc Markdown lives in [`api/runner-protocol`](./api/runner-protocol/index.md).
+`@textmode/runner-protocol` is consumed by the following packages in this
+repository:
+
+| Package                                                        | Relationship                                             |
+| -------------------------------------------------------------- | -------------------------------------------------------- |
+| [`@textmode/runner-client`](../runner-client/README.md)        | Sends and receives these messages as a host client      |
+| [`@textmode/runner-app`](../../apps/runner/README.md)          | Implements this contract inside the sandboxed runner    |
+
+## Next steps
+
+- **[Read the runner overview](../../README.md)** for the workspace conventions.
+- **[Browse all packages](../README.md)** to find related runner packages.
+- **[Browse the API docs](./api/runner-protocol/index.md)** for the generated type reference.
+- **[Visit code.textmode.art](https://code.textmode.art/)** for the ecosystem documentation.
 
 ## License
 
-CC0-1.0. See [LICENSE](./LICENSE).
+The `@textmode/runner-protocol` package is licensed under the [CC0 1.0 Universal](./LICENSE).
