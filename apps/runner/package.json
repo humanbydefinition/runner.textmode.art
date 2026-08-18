@@ -1,23 +1,23 @@
 {
-    "name": "@textmode/runner-app",
-    "private": true,
-    "version": "0.0.0",
-    "license": "AGPL-3.0",
-    "type": "module",
-    "scripts": {
-        "dev": "vite --host --port 5181",
-        "build": "tsc -b && vite build",
-        "preview": "vite preview",
-        "check-types": "tsc -b",
-        "lint": "eslint .",
-        "test": "vitest run --passWithNoTests"
-    },
-    "dependencies": {
-        "@textmode/runner-protocol": "file:../../packages/runner-protocol",
-        "textmode.export.js": "1.7.2",
-        "textmode.figlet.js": "1.0.4",
-        "textmode.filters.js": "1.2.4",
-        "textmode.js": "0.17.2",
-        "textmode.synth.js": "1.8.1"
-    }
+	"name": "@textmode/runner-app",
+	"private": true,
+	"version": "0.0.0",
+	"license": "AGPL-3.0",
+	"type": "module",
+	"scripts": {
+		"dev": "textmode-build dev --host --port 5181",
+		"build": "tsc -b && textmode-build build",
+		"preview": "textmode-build preview",
+		"check-types": "tsc -b",
+		"lint": "textmode-lint lint .",
+		"test": "textmode-build test --passWithNoTests"
+	},
+	"dependencies": {
+		"@textmode/runner-protocol": "file:../../packages/runner-protocol",
+		"textmode.export.js": "1.7.2",
+		"textmode.figlet.js": "1.0.4",
+		"textmode.filters.js": "1.2.4",
+		"textmode.js": "0.17.2",
+		"textmode.synth.js": "1.8.1"
+	}
 }

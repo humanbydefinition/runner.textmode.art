@@ -1,6 +1,4 @@
-import globals from 'globals';
-import pluginJs from '@eslint/js';
-import tseslint from 'typescript-eslint';
+import shared from '@textmode/lint';
 import importPlugin from 'eslint-plugin-import';
 
 const architectureZones = [
@@ -9,18 +7,7 @@ const architectureZones = [
 ];
 
 export default [
-	{ ignores: ['**/dist'] },
-	{
-		files: ['**/*.{ts,js}'],
-		languageOptions: {
-			globals: {
-				...globals.browser,
-				...globals.node,
-			},
-		},
-	},
-	pluginJs.configs.recommended,
-	...tseslint.configs.recommended,
+	...shared,
 	{
 		plugins: { import: importPlugin },
 		rules: {

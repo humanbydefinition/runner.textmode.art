@@ -1,36 +1,49 @@
 {
-    "name": "@textmode/runner-monorepo",
-    "private": true,
-    "version": "0.0.0",
-    "type": "module",
-    "workspaces": [
-        "apps/*",
-        "packages/*"
-    ],
-    "scripts": {
-        "dev": "npm run dev -w @textmode/runner-app",
-        "build": "npm run build -w @textmode/runner-protocol && npm run build -w @textmode/runner-client && npm run build -w @textmode/runner-app",
-        "preview": "npm run preview -w @textmode/runner-app",
-        "check": "npm run check-types && npm run lint && npm run test && npm run build",
-        "check-types": "tsc -b",
-        "lint": "npm run lint --workspaces --if-present",
-        "test": "npm run test --workspaces --if-present",
-        "build:docs": "npm run build:docs --workspaces --if-present",
-        "dev:docs": "npm run dev:docs -w @textmode/runner-protocol & npm run dev:docs -w @textmode/runner-client & wait"
-    },
-    "devDependencies": {
-        "@eslint/js": "^9.39.1",
-        "@types/node": "^24.10.1",
-        "eslint": "^9.39.1",
-        "eslint-plugin-import": "^2.32.0",
-        "globals": "^16.5.0",
-        "typedoc": "^0.28.19",
-        "typedoc-plugin-frontmatter": "^1.3.1",
-        "typedoc-plugin-markdown": "^4.11.0",
-        "typedoc-vitepress-theme": "^1.1.2",
-        "typescript": "~5.9.3",
-        "typescript-eslint": "^8.46.4",
-        "vite": "^7.2.4",
-        "vitest": "^4.0.18"
-    }
+	"name": "@textmode/runner-monorepo",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"workspaces": [
+		"apps/*",
+		"packages/*"
+	],
+	"engines": {
+		"node": ">=24"
+	},
+	"devEngines": {
+		"runtime": {
+			"name": "node",
+			"version": ">=24.0.0",
+			"onFail": "warn"
+		},
+		"packageManager": {
+			"name": "npm",
+			"version": ">=10.0.0",
+			"onFail": "warn"
+		}
+	},
+	"scripts": {
+		"dev": "npm run dev -w @textmode/runner-app",
+		"build": "npm run build -w @textmode/runner-protocol && npm run build -w @textmode/runner-client && npm run build -w @textmode/runner-app",
+		"preview": "npm run preview -w @textmode/runner-app",
+		"check": "npm run format:check && npm run check-types && npm run lint && npm run test && npm run build",
+		"check-types": "tsc -b",
+		"format": "textmode-lint format",
+		"format:check": "textmode-lint format:check",
+		"lint": "npm run lint --workspaces --if-present",
+		"lint:markdown": "textmode-lint lint:markdown",
+		"test": "npm run test --workspaces --if-present",
+		"build:docs": "npm run build:docs --workspaces --if-present",
+		"dev:docs": "npm run dev:docs -w @textmode/runner-protocol & npm run dev:docs -w @textmode/runner-client & wait"
+	},
+	"prettier": "@textmode/lint/prettier",
+	"devDependencies": {
+		"@textmode/build": "^0.1.0",
+		"@textmode/docs": "^0.3.0",
+		"@textmode/lint": "^0.1.0",
+		"@textmode/tsconfig": "^0.2.0",
+		"@types/node": "^26.1.2",
+		"eslint-plugin-import": "^2.32.0",
+		"typescript": "^6.0.3"
+	}
 }

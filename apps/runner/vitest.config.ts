@@ -4,8 +4,11 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
 	resolve: {
 		alias: {
-			'@': path.resolve(__dirname, './src'),
-			'@textmode/runner-protocol': path.resolve(__dirname, '../../packages/runner-protocol/src/index.ts'),
+			'@': path.resolve(import.meta.dirname, './src'),
+			'@textmode/runner-protocol': path.resolve(
+				import.meta.dirname,
+				'../../packages/runner-protocol/src/index.ts'
+			),
 		},
 	},
 	test: {
