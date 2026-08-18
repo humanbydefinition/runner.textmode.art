@@ -13,12 +13,7 @@
  */
 
 export { createRunnerCapabilities, type RunnerCapabilities } from './capabilities';
-export {
-	isInitMessage,
-	isParentMessage,
-	isRunnerCapabilities,
-	isRunnerMessage,
-} from './guards';
+export { isInitMessage, isParentMessage, isRunnerCapabilities, isRunnerMessage } from './guards';
 export {
 	type AudioDataMessage,
 	type DisposeMessage,

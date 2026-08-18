@@ -1,24 +1,24 @@
 import type { Textmodifier, TextmodeLayerManager, TextmodeLayer } from 'textmode.js';
 
 export interface SafeProxyOptions {
-    /** Called when an error occurs in a draw callback */
-    onDrawError: (error: Error) => void;
-    /** Whether draw errors have occurred (to skip further draw calls) */
-    hasDrawError: () => boolean;
+	/** Called when an error occurs in a draw callback */
+	onDrawError: (error: Error) => void;
+	/** Whether draw errors have occurred (to skip further draw calls) */
+	hasDrawError: () => boolean;
 }
 
 export interface TextmodeProxyExecutionHooks {
-    /** Capture the setup callback for this code execution. */
-    onSetup: (callback: unknown) => void;
-    /** Register a textmode resource owned by this code execution. */
-    onResource?: (resource: unknown) => void;
+	/** Capture the setup callback for this code execution. */
+	onSetup: (callback: unknown) => void;
+	/** Register a textmode resource owned by this code execution. */
+	onResource?: (resource: unknown) => void;
 }
 
 const EXECUTION_RESOURCE_FACTORIES = new Set([
-    'createFramebuffer',
-    'createMaterialShader',
-    'createShader',
-    'createTexture',
+	'createFramebuffer',
+	'createMaterialShader',
+	'createShader',
+	'createTexture',
 ]);
 
 /**
@@ -26,228 +26,228 @@ const EXECUTION_RESOURCE_FACTORIES = new Set([
  * Ensures runtime errors in user draw loops don't crash the entire application.
  */
 export class SafeProxyFactory {
-    private options: SafeProxyOptions;
-    private readonly assetLoadCache = new Map<string, Promise<unknown>>();
-    private static readonly MAX_ASSET_CACHE_ENTRIES = 64;
+	private options: SafeProxyOptions;
+	private readonly assetLoadCache = new Map<string, Promise<unknown>>();
+	private static readonly MAX_ASSET_CACHE_ENTRIES = 64;
 
-    constructor(options: SafeProxyOptions) {
-        this.options = options;
-    }
+	constructor(options: SafeProxyOptions) {
+		this.options = options;
+	}
 
-    /**
-     * Create a proxy for the main textmode instance
-     */
-    createTextmodeProxy(original: Textmodifier, hooks?: TextmodeProxyExecutionHooks): Textmodifier {
-        return new Proxy(original, {
-            get: (target, prop) => {
-                const value = (target as unknown as Record<string | symbol, unknown>)[prop];
+	/**
+	 * Create a proxy for the main textmode instance
+	 */
+	createTextmodeProxy(original: Textmodifier, hooks?: TextmodeProxyExecutionHooks): Textmodifier {
+		return new Proxy(original, {
+			get: (target, prop) => {
+				const value = (target as unknown as Record<string | symbol, unknown>)[prop];
 
-                if (prop === 'setup' && hooks) {
-                    return (callback: unknown): Promise<void> => {
-                        hooks.onSetup(callback);
-                        return Promise.resolve();
-                    };
-                }
+				if (prop === 'setup' && hooks) {
+					return (callback: unknown): Promise<void> => {
+						hooks.onSetup(callback);
+						return Promise.resolve();
+					};
+				}
 
-                if (typeof prop === 'string' && EXECUTION_RESOURCE_FACTORIES.has(prop) && typeof value === 'function') {
-                    return (...args: unknown[]) => {
-                        const result = (value as (...factoryArgs: unknown[]) => unknown).apply(target, args);
-                        if (isPromiseLike(result)) {
-                            return Promise.resolve(result).then((resource) => {
-                                hooks?.onResource?.(resource);
-                                return resource;
-                            });
-                        }
+				if (typeof prop === 'string' && EXECUTION_RESOURCE_FACTORIES.has(prop) && typeof value === 'function') {
+					return (...args: unknown[]) => {
+						const result = (value as (...factoryArgs: unknown[]) => unknown).apply(target, args);
+						if (isPromiseLike(result)) {
+							return Promise.resolve(result).then((resource) => {
+								hooks?.onResource?.(resource);
+								return resource;
+							});
+						}
 
-                        hooks?.onResource?.(result);
-                        return result;
-                    };
-                }
+						hooks?.onResource?.(result);
+						return result;
+					};
+				}
 
-                if (prop === 'draw') {
-                    return (callback: () => void) => target.draw(this.wrapDrawCallback(callback));
-                }
+				if (prop === 'draw') {
+					return (callback: () => void) => target.draw(this.wrapDrawCallback(callback));
+				}
 
-                if (prop === 'loadImage') {
-                    return (src: string) => this.wrapMediaLoad(target, value, src, 'image');
-                }
+				if (prop === 'loadImage') {
+					return (src: string) => this.wrapMediaLoad(target, value, src, 'image');
+				}
 
-                if (prop === 'loadVideo') {
-                    return (src: string) => this.wrapMediaLoad(target, value, src, 'video');
-                }
+				if (prop === 'loadVideo') {
+					return (src: string) => this.wrapMediaLoad(target, value, src, 'video');
+				}
 
-                if (prop === 'loadFont') {
-                    return (fontSource: string | unknown, setActive?: boolean) =>
-                        this.wrapTextmodeFontLoad(target, value, fontSource, setActive);
-                }
+				if (prop === 'loadFont') {
+					return (fontSource: string | unknown, setActive?: boolean) =>
+						this.wrapTextmodeFontLoad(target, value, fontSource, setActive);
+				}
 
-                if (prop === 'layers') {
-                    return this.createLayerManagerProxy(target.layers);
-                }
+				if (prop === 'layers') {
+					return this.createLayerManagerProxy(target.layers);
+				}
 
-                if (typeof value === 'function') {
-                    return value.bind(target);
-                }
+				if (typeof value === 'function') {
+					return value.bind(target);
+				}
 
-                return value;
-            },
-        });
-    }
+				return value;
+			},
+		});
+	}
 
-    /**
-     * Create a proxy for the layer manager
-     */
-    private createLayerManagerProxy(layers: TextmodeLayerManager): TextmodeLayerManager {
-        return new Proxy(layers, {
-            get: (target, prop) => {
-                const value = (target as unknown as Record<string | symbol, unknown>)[prop];
+	/**
+	 * Create a proxy for the layer manager
+	 */
+	private createLayerManagerProxy(layers: TextmodeLayerManager): TextmodeLayerManager {
+		return new Proxy(layers, {
+			get: (target, prop) => {
+				const value = (target as unknown as Record<string | symbol, unknown>)[prop];
 
-                if (prop === 'base') {
-                    return this.createLayerProxy(target.base);
-                }
+				if (prop === 'base') {
+					return this.createLayerProxy(target.base);
+				}
 
-                if (prop === 'add') {
-                    return (options?: Parameters<typeof target.add>[0]) => {
-                        const layer = target.add(options);
-                        return this.createLayerProxy(layer);
-                    };
-                }
+				if (prop === 'add') {
+					return (options?: Parameters<typeof target.add>[0]) => {
+						const layer = target.add(options);
+						return this.createLayerProxy(layer);
+					};
+				}
 
-                if (prop === 'all') {
-                    return (target.all as TextmodeLayer[]).map((layer) => this.createLayerProxy(layer));
-                }
+				if (prop === 'all') {
+					return (target.all as TextmodeLayer[]).map((layer) => this.createLayerProxy(layer));
+				}
 
-                return value;
-            },
-        });
-    }
+				return value;
+			},
+		});
+	}
 
-    /**
-     * Create a proxy for a single layer
-     */
-    private createLayerProxy(layer: TextmodeLayer): TextmodeLayer {
-        return new Proxy(layer, {
-            get: (target, prop) => {
-                const value = (target as unknown as Record<string | symbol, unknown>)[prop];
+	/**
+	 * Create a proxy for a single layer
+	 */
+	private createLayerProxy(layer: TextmodeLayer): TextmodeLayer {
+		return new Proxy(layer, {
+			get: (target, prop) => {
+				const value = (target as unknown as Record<string | symbol, unknown>)[prop];
 
-                if (prop === 'draw') {
-                    return (callback: () => void) => target.draw(this.wrapDrawCallback(callback));
-                }
+				if (prop === 'draw') {
+					return (callback: () => void) => target.draw(this.wrapDrawCallback(callback));
+				}
 
-                if (prop === 'loadFont') {
-                    return (fontSource: string | unknown) => this.wrapLayerFontLoad(target, value, fontSource);
-                }
+				if (prop === 'loadFont') {
+					return (fontSource: string | unknown) => this.wrapLayerFontLoad(target, value, fontSource);
+				}
 
-                if (typeof value === 'function') {
-                    return value.bind(target);
-                }
+				if (typeof value === 'function') {
+					return value.bind(target);
+				}
 
-                return value;
-            },
-        });
-    }
+				return value;
+			},
+		});
+	}
 
-    /**
-     * Wrap a draw callback to catch errors without crashing
-     */
-    private wrapDrawCallback(callback: () => void): () => void {
-        return () => {
-            if (this.options.hasDrawError()) return; // Skip if in error state
-            try {
-                callback();
-            } catch (error) {
-                this.options.onDrawError(error as Error);
-            }
-        };
-    }
+	/**
+	 * Wrap a draw callback to catch errors without crashing
+	 */
+	private wrapDrawCallback(callback: () => void): () => void {
+		return () => {
+			if (this.options.hasDrawError()) return; // Skip if in error state
+			try {
+				callback();
+			} catch (error) {
+				this.options.onDrawError(error as Error);
+			}
+		};
+	}
 
-    private wrapMediaLoad(
-        target: Textmodifier,
-        value: unknown,
-        src: string,
-        type: 'image' | 'video'
-    ): Promise<unknown> {
-        if (typeof value !== 'function') {
-            return Promise.reject(new Error('loadImage/loadVideo is not a function'));
-        }
+	private wrapMediaLoad(
+		target: Textmodifier,
+		value: unknown,
+		src: string,
+		type: 'image' | 'video'
+	): Promise<unknown> {
+		if (typeof value !== 'function') {
+			return Promise.reject(new Error('loadImage/loadVideo is not a function'));
+		}
 
-        const invoke = (url: string) => (value as (arg: string) => Promise<unknown>).call(target, url);
-        const cacheKey = `${type}:${src}`;
-        return this.getOrSetCachedLoad(cacheKey, () => invoke(src));
-    }
+		const invoke = (url: string) => (value as (arg: string) => Promise<unknown>).call(target, url);
+		const cacheKey = `${type}:${src}`;
+		return this.getOrSetCachedLoad(cacheKey, () => invoke(src));
+	}
 
-    private wrapTextmodeFontLoad(
-        target: Textmodifier,
-        value: unknown,
-        fontSource: string | unknown,
-        setActive?: boolean
-    ): Promise<unknown> {
-        if (typeof value !== 'function') {
-            return Promise.reject(new Error('loadFont is not a function'));
-        }
+	private wrapTextmodeFontLoad(
+		target: Textmodifier,
+		value: unknown,
+		fontSource: string | unknown,
+		setActive?: boolean
+	): Promise<unknown> {
+		if (typeof value !== 'function') {
+			return Promise.reject(new Error('loadFont is not a function'));
+		}
 
-        const invoke = (source: unknown, active?: boolean) =>
-            (value as (source: unknown, setActive?: boolean) => Promise<unknown>).call(target, source, active);
+		const invoke = (source: unknown, active?: boolean) =>
+			(value as (source: unknown, setActive?: boolean) => Promise<unknown>).call(target, source, active);
 
-        if (typeof fontSource !== 'string') {
-            return invoke(fontSource, setActive);
-        }
+		if (typeof fontSource !== 'string') {
+			return invoke(fontSource, setActive);
+		}
 
-        const cacheKey = `font:${fontSource}`;
-        const activeRequested = setActive !== false;
-        const cachedFontPromise = this.getOrSetCachedLoad(cacheKey, () => invoke(fontSource, false));
+		const cacheKey = `font:${fontSource}`;
+		const activeRequested = setActive !== false;
+		const cachedFontPromise = this.getOrSetCachedLoad(cacheKey, () => invoke(fontSource, false));
 
-        if (!activeRequested) {
-            return cachedFontPromise;
-        }
+		if (!activeRequested) {
+			return cachedFontPromise;
+		}
 
-        return cachedFontPromise.then((font) => invoke(font, true));
-    }
+		return cachedFontPromise.then((font) => invoke(font, true));
+	}
 
-    private wrapLayerFontLoad(layer: TextmodeLayer, value: unknown, fontSource: string | unknown): Promise<unknown> {
-        if (typeof value !== 'function') {
-            return Promise.reject(new Error('loadFont is not a function'));
-        }
+	private wrapLayerFontLoad(layer: TextmodeLayer, value: unknown, fontSource: string | unknown): Promise<unknown> {
+		if (typeof value !== 'function') {
+			return Promise.reject(new Error('loadFont is not a function'));
+		}
 
-        const invoke = (source: unknown) => (value as (arg: unknown) => Promise<unknown>).call(layer, source);
+		const invoke = (source: unknown) => (value as (arg: unknown) => Promise<unknown>).call(layer, source);
 
-        if (typeof fontSource !== 'string') {
-            return invoke(fontSource);
-        }
+		if (typeof fontSource !== 'string') {
+			return invoke(fontSource);
+		}
 
-        const cacheKey = `layer-font:${fontSource}`;
-        const cachedFontPromise = this.getOrSetCachedLoad(cacheKey, () => invoke(fontSource));
+		const cacheKey = `layer-font:${fontSource}`;
+		const cachedFontPromise = this.getOrSetCachedLoad(cacheKey, () => invoke(fontSource));
 
-        return cachedFontPromise.then((font) => invoke(font));
-    }
+		return cachedFontPromise.then((font) => invoke(font));
+	}
 
-    private getOrSetCachedLoad(cacheKey: string, loader: () => Promise<unknown>): Promise<unknown> {
-        const cached = this.assetLoadCache.get(cacheKey);
-        if (cached) {
-            return cached;
-        }
+	private getOrSetCachedLoad(cacheKey: string, loader: () => Promise<unknown>): Promise<unknown> {
+		const cached = this.assetLoadCache.get(cacheKey);
+		if (cached) {
+			return cached;
+		}
 
-        const loadPromise = loader().catch((error) => {
-            // Don't keep failed entries cached so future edits can retry.
-            this.assetLoadCache.delete(cacheKey);
-            throw error;
-        });
+		const loadPromise = loader().catch((error) => {
+			// Don't keep failed entries cached so future edits can retry.
+			this.assetLoadCache.delete(cacheKey);
+			throw error;
+		});
 
-        this.assetLoadCache.set(cacheKey, loadPromise);
-        if (this.assetLoadCache.size > SafeProxyFactory.MAX_ASSET_CACHE_ENTRIES) {
-            const oldestKey = this.assetLoadCache.keys().next().value;
-            if (oldestKey) {
-                this.assetLoadCache.delete(oldestKey);
-            }
-        }
+		this.assetLoadCache.set(cacheKey, loadPromise);
+		if (this.assetLoadCache.size > SafeProxyFactory.MAX_ASSET_CACHE_ENTRIES) {
+			const oldestKey = this.assetLoadCache.keys().next().value;
+			if (oldestKey) {
+				this.assetLoadCache.delete(oldestKey);
+			}
+		}
 
-        return loadPromise;
-    }
-
+		return loadPromise;
+	}
 }
 
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
-    return (
-        (typeof value === 'object' && value !== null) || typeof value === 'function'
-    ) && typeof (value as PromiseLike<unknown>).then === 'function';
+	return (
+		((typeof value === 'object' && value !== null) || typeof value === 'function') &&
+		typeof (value as PromiseLike<unknown>).then === 'function'
+	);
 }

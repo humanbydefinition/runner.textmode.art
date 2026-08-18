@@ -228,7 +228,11 @@ describe('@textmode/runner-client', () => {
 		const second = new FakeIframe();
 
 		mountRunnerIframe(replaceContainer as unknown as HTMLElement, first as unknown as HTMLIFrameElement, 'replace');
-		mountRunnerIframe(replaceContainer as unknown as HTMLElement, second as unknown as HTMLIFrameElement, 'replace');
+		mountRunnerIframe(
+			replaceContainer as unknown as HTMLElement,
+			second as unknown as HTMLIFrameElement,
+			'replace'
+		);
 		mountRunnerIframe(appendContainer as unknown as HTMLElement, first as unknown as HTMLIFrameElement, 'append');
 		mountRunnerIframe(appendContainer as unknown as HTMLElement, second as unknown as HTMLIFrameElement, 'append');
 

@@ -4,10 +4,4 @@
  * @category Runtime
  */
 export type RunnerRuntimeStatus =
-	| 'idle'
-	| 'connecting'
-	| 'configuring'
-	| 'ready'
-	| 'recovering'
-	| 'unavailable'
-	| 'hung';
+	'idle' | 'connecting' | 'configuring' | 'ready' | 'recovering' | 'unavailable' | 'hung';

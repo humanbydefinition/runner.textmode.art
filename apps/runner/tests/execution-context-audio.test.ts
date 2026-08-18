@@ -40,7 +40,7 @@ globalThis.__audioSnapshot = {
 			timestamp: 42,
 		});
 		expect(
-			((globalThis as typeof globalThis & { __audioSnapshot: { volume: number } }).__audioSnapshot).volume
+			(globalThis as typeof globalThis & { __audioSnapshot: { volume: number } }).__audioSnapshot.volume
 		).toBeCloseTo(Math.sqrt((0 + (127 / 128) ** 2 + 1 + 0) / 4));
 
 		delete (globalThis as typeof globalThis & { __audioSnapshot?: unknown }).__audioSnapshot;

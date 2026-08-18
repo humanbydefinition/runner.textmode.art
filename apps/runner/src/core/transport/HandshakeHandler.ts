@@ -46,7 +46,7 @@ export class HandshakeHandler {
 				if (this.options.onOriginEstablished) {
 					this.options.onOriginEstablished(event.origin);
 				}
-				
+
 				this.options.onPortExtracted(port);
 
 				// 5. Signal readiness

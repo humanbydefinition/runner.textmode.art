@@ -46,6 +46,7 @@ export class ExecutionResourceStack {
 
 function isExecutionDisposable(value: unknown): value is ExecutionDisposable {
 	return (
-		(typeof value === 'object' && value !== null) || typeof value === 'function'
-	) && typeof (value as ExecutionDisposable).dispose === 'function';
+		((typeof value === 'object' && value !== null) || typeof value === 'function') &&
+		typeof (value as ExecutionDisposable).dispose === 'function'
+	);
 }

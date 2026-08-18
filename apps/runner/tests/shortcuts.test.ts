@@ -19,8 +19,6 @@ describe('runner shortcuts', () => {
 	it('rejects modified, incomplete, and repeated shortcuts', () => {
 		expect(getRunnerShortcut({ ...BASE_EVENT, metaKey: true, shiftKey: true, key: 'R' })).toBeNull();
 		expect(getRunnerShortcut({ ...BASE_EVENT, ctrlKey: true, key: 'R' })).toBeNull();
-		expect(
-			getRunnerShortcut({ ...BASE_EVENT, ctrlKey: true, shiftKey: true, key: 'R', repeat: true })
-		).toBeNull();
+		expect(getRunnerShortcut({ ...BASE_EVENT, ctrlKey: true, shiftKey: true, key: 'R', repeat: true })).toBeNull();
 	});
 });

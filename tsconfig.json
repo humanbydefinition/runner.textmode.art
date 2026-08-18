@@ -1,8 +1,8 @@
 {
-    "files": [],
-    "references": [
-        { "path": "./packages/runner-protocol" },
-        { "path": "./packages/runner-client" },
-        { "path": "./apps/runner" }
-    ]
+	"files": [],
+	"references": [
+		{ "path": "./packages/runner-protocol" },
+		{ "path": "./packages/runner-client" },
+		{ "path": "./apps/runner" }
+	]
 }

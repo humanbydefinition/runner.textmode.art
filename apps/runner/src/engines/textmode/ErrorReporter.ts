@@ -8,24 +8,24 @@ export type RunnerMessageSender = (msg: RunnerToParentMessage) => void;
  * Sends error messages to the parent window
  */
 export class ErrorReporter {
-    private readonly sendMessage: RunnerMessageSender;
+	private readonly sendMessage: RunnerMessageSender;
 
-    constructor(sendMessage: RunnerMessageSender) {
-        this.sendMessage = sendMessage;
-    }
+	constructor(sendMessage: RunnerMessageSender) {
+		this.sendMessage = sendMessage;
+	}
 
 	/**
 	 * Report an error to the parent window
 	 */
 	report(error: Error | string | Event | CodeError, requestId?: string): void {
-        const runtimeError = normalizeError(error);
-        this.sendMessage({
-            type: 'RUN_ERROR',
-            message: runtimeError.message,
-            stack: runtimeError.stack,
-            line: runtimeError.line,
-            column: runtimeError.column,
-            requestId,
-        });
-    }
+		const runtimeError = normalizeError(error);
+		this.sendMessage({
+			type: 'RUN_ERROR',
+			message: runtimeError.message,
+			stack: runtimeError.stack,
+			line: runtimeError.line,
+			column: runtimeError.column,
+			requestId,
+		});
+	}
 }

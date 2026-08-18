@@ -81,9 +81,7 @@ describe('@textmode/runner-protocol', () => {
 
 	it('validates current parent messages', () => {
 		expect(isParentMessage({ type: 'RUN_CODE', requestId: 'run_1', code: 't.draw(() => {})' })).toBe(true);
-		expect(
-			isParentMessage({ type: 'RESET_RUNTIME', requestId: 'reset_1', code: 't.draw(() => {})' })
-		).toBe(true);
+		expect(isParentMessage({ type: 'RESET_RUNTIME', requestId: 'reset_1', code: 't.draw(() => {})' })).toBe(true);
 		expect(isParentMessage({ type: 'DISPOSE' })).toBe(true);
 		expect(isParentMessage({ type: 'PING', nonce: 'heartbeat_1' })).toBe(true);
 		expect(
@@ -142,9 +140,9 @@ describe('@textmode/runner-protocol', () => {
 		expect(isParentMessage({ type: 'RESET_RUNTIME' })).toBe(false);
 		expect(isParentMessage({ type: 'RESET_RUNTIME', requestId: 'reset_1', code: 42 })).toBe(false);
 		expect(isParentMessage({ type: 'PING', nonce: 123 })).toBe(false);
-		expect(isParentMessage({ type: 'AUDIO_DATA', fft: [1, 2], waveform: new Uint8Array([128]), timestamp: 1 })).toBe(
-			false
-		);
+		expect(
+			isParentMessage({ type: 'AUDIO_DATA', fft: [1, 2], waveform: new Uint8Array([128]), timestamp: 1 })
+		).toBe(false);
 		expect(isParentMessage({ type: 'AUDIO_DATA', fft: new Uint8Array([1]), timestamp: 1 })).toBe(false);
 		expect(
 			isParentMessage({

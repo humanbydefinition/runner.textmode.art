@@ -96,14 +96,7 @@ globalThis.__setupTrace.push('body-second');
 t.setup(() => globalThis.__setupTrace.push('setup-second'));
 `);
 
-		expect(trace).toEqual([
-			'ready',
-			'setup-first',
-			'dispose-first',
-			'body-second',
-			'ready',
-			'setup-second',
-		]);
+		expect(trace).toEqual(['ready', 'setup-first', 'dispose-first', 'body-second', 'ready', 'setup-second']);
 	});
 
 	it('reports invalid and rejected setup callbacks and disposes partial setup state', async () => {
