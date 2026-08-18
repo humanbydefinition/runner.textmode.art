@@ -7,8 +7,20 @@ const architectureZones = [
 ];
 
 export default [
-	...shared,
 	{
+		ignores: ['**/dist/**', '**/api/**', '**/coverage/**', '**/node_modules/**'],
+	},
+	...shared.map((config) => {
+		if (config.files) {
+			return {
+				...config,
+				files: ['**/*.{ts,js}'],
+			};
+		}
+		return config;
+	}),
+	{
+		files: ['**/*.{ts,js}'],
 		plugins: { import: importPlugin },
 		rules: {
 			'import/no-restricted-paths': [

@@ -7,7 +7,7 @@ const USER_CODE_STACK_LINE_OFFSET = 2;
  * Extracts line/column from stack traces when available.
  */
 export function normalizeError(error: unknown): CodeError {
-	let message = '';
+	let message: string;
 	let stack: string | undefined;
 	let line: number | undefined;
 	let column: number | undefined;
