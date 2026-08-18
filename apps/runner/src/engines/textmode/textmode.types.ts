@@ -10,7 +10,7 @@ import type { CodeError } from '@/core/types';
  * This is added by the SynthPlugin
  */
 export interface SynthLayer {
-    clearSynth(): void;
+	clearSynth(): void;
 }
 
 export interface ExecutionResult {

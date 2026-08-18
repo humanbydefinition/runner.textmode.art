@@ -69,14 +69,17 @@ export class RequestRegistry {
 
 			const scheduleTimer = () => {
 				startedAt = timerApi.now();
-				timeoutId = timerApi.setTimeout(() => {
-					timeoutId = null;
-					if (!isPageVisible(this.visibilityApi)) {
-						remainingMs = 0;
-						return;
-					}
-					rejectTimedOut();
-				}, Math.max(0, remainingMs));
+				timeoutId = timerApi.setTimeout(
+					() => {
+						timeoutId = null;
+						if (!isPageVisible(this.visibilityApi)) {
+							remainingMs = 0;
+							return;
+						}
+						rejectTimedOut();
+					},
+					Math.max(0, remainingMs)
+				);
 			};
 
 			function resumeTimer() {

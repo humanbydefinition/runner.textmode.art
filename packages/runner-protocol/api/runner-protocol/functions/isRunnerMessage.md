@@ -1,6 +1,12 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: isRunnerMessage
+description: Checks whether a value is a valid current runner-to-host message.
+category: Functions
+api: true
+kind: Function
+lastModified: 2026-08-18
 ---
 
 [@textmode/runner-protocol](../index.md) / isRunnerMessage

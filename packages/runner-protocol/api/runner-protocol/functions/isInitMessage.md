@@ -1,6 +1,12 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: isInitMessage
+description: Checks whether a value is a valid current runner iframe initialization message.
+category: Functions
+api: true
+kind: Function
+lastModified: 2026-08-18
 ---
 
 [@textmode/runner-protocol](../index.md) / isInitMessage

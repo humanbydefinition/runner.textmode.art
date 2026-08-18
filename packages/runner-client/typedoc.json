@@ -1,8 +1,0 @@
-{
-    "extends": "../../typedoc.base.json",
-    "entryPoints": [
-        "src/index.ts"
-    ],
-    "out": "api/runner-client",
-    "name": "@textmode/runner-client"
-}

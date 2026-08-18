@@ -200,11 +200,7 @@ export interface AudioDataMessage {
  * @category Messages
  */
 export type ParentToRunnerMessage =
-	| RunCodeMessage
-	| ResetRuntimeMessage
-	| DisposeMessage
-	| PingMessage
-	| AudioDataMessage;
+	RunCodeMessage | ResetRuntimeMessage | DisposeMessage | PingMessage | AudioDataMessage;
 
 /**
  * Messages sent to the runner iframe window before MessagePort attachment.

@@ -1,6 +1,13 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: IframeTextmodeRuntime
+description: Browser iframe runtime for communicating with the hosted textmode runner.
+category: Classes
+api: true
+kind: Class
+lastModified: 2026-08-18
+hasConstructor: true
 ---
 
 [@textmode/runner-client](../index.md) / IframeTextmodeRuntime
@@ -29,19 +36,19 @@ new IframeTextmodeRuntime(options): IframeTextmodeRuntime;
 
 ## Runtime
 
-### isReady
+### advertisedCapabilities
 
 #### Get Signature
 
 ```ts
-get isReady(): boolean;
+get advertisedCapabilities(): RunnerCapabilities | null;
 ```
 
-Whether the runner iframe is ready to accept requests.
+Capabilities advertised by the connected runner.
 
 ##### Returns
 
-`boolean`
+`RunnerCapabilities` \| `null`
 
 ***
 
@@ -61,19 +68,19 @@ Current runner iframe element, when mounted.
 
 ***
 
-### status
+### isReady
 
 #### Get Signature
 
 ```ts
-get status(): RunnerRuntimeStatus;
+get isReady(): boolean;
 ```
 
-Current runner lifecycle status.
+Whether the runner iframe is ready to accept requests.
 
 ##### Returns
 
-[`RunnerRuntimeStatus`](../type-aliases/RunnerRuntimeStatus.md)
+`boolean`
 
 ***
 
@@ -93,19 +100,49 @@ Alias for [IframeTextmodeRuntime.status](#status).
 
 ***
 
-### advertisedCapabilities
+### status
 
 #### Get Signature
 
 ```ts
-get advertisedCapabilities(): RunnerCapabilities | null;
+get status(): RunnerRuntimeStatus;
 ```
 
-Capabilities advertised by the connected runner.
+Current runner lifecycle status.
 
 ##### Returns
 
-`RunnerCapabilities` \| `null`
+[`RunnerRuntimeStatus`](../type-aliases/RunnerRuntimeStatus.md)
+
+***
+
+### activateFromUserGesture()
+
+```ts
+activateFromUserGesture(): void;
+```
+
+Focuses the iframe from a host user gesture.
+
+Some browsers use this to unlock normal iframe animation cadence.
+
+#### Returns
+
+`void`
+
+***
+
+### dispose()
+
+```ts
+dispose(): void;
+```
+
+Disposes the iframe connection and rejects pending requests.
+
+#### Returns
+
+`void`
 
 ***
 
@@ -131,17 +168,26 @@ Mounts the runner iframe and performs the current protocol handshake.
 
 ***
 
-### dispose()
+### probeCode()
 
 ```ts
-dispose(): void;
+probeCode(code, options?): Promise<boolean>;
 ```
 
-Disposes the iframe connection and rejects pending requests.
+Executes code as a transactional candidate.
+
+Failed and timed-out probes do not replace the code used by reconnect.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `code` | `string` |
+| `options` | [`RunnerProbeOptions`](../interfaces/RunnerProbeOptions.md) |
 
 #### Returns
 
-`void`
+`Promise`\<`boolean`\>
 
 ***
 
@@ -167,29 +213,15 @@ Recreates the iframe and optionally reruns the last requested code.
 
 ***
 
-### activateFromUserGesture()
+### resetRuntime()
 
 ```ts
-activateFromUserGesture(): void;
+resetRuntime(code): Promise<boolean>;
 ```
 
-Focuses the iframe from a host user gesture.
+Rebuilds the textmode runtime while preserving the current iframe document.
 
-Some browsers use this to unlock normal iframe animation cadence.
-
-#### Returns
-
-`void`
-
-***
-
-### runCode()
-
-```ts
-runCode(code): Promise<boolean>;
-```
-
-Executes code in the runner.
+Older runners fall back to a full reconnect followed by one code execution.
 
 #### Parameters
 
@@ -203,15 +235,13 @@ Executes code in the runner.
 
 ***
 
-### resetRuntime()
+### runCode()
 
 ```ts
-resetRuntime(code): Promise<boolean>;
+runCode(code): Promise<boolean>;
 ```
 
-Rebuilds the textmode runtime while preserving the current iframe document.
-
-Older runners fall back to a full reconnect followed by one code execution.
+Executes code in the runner.
 
 #### Parameters
 

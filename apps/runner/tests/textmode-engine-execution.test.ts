@@ -83,7 +83,9 @@ describe('TextmodeEngine execution recovery', () => {
 		};
 		internals.context = {
 			validateSyntax: (code) =>
-				code === 'broken syntax' ? { valid: false, error: new SyntaxError('Unexpected token') } : { valid: true },
+				code === 'broken syntax'
+					? { valid: false, error: new SyntaxError('Unexpected token') }
+					: { valid: true },
 			execute,
 		};
 		internals.errorReporter = { report };

@@ -1,6 +1,12 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: "@textmode/runner-client"
+description: Browser iframe runtime client for the hosted textmode runner.
+category: API Reference
+api: true
+kind: Project
+lastModified: 2026-08-18
 ---
 
 # @textmode/runner-client
@@ -15,18 +21,24 @@ and disposal for host apps.
 
 | Name | Description |
 | ------ | ------ |
-| [RunnerExecutionError](interfaces/RunnerExecutionError.md) | Error shape surfaced by runner execution callbacks and rejected run requests. |
 | [RunnerRequestError](classes/RunnerRequestError.md) | Error used when a request-scoped runner execution fails. |
+| [RunnerExecutionError](interfaces/RunnerExecutionError.md) | Error shape surfaced by runner execution callbacks and rejected run requests. |
 
 ## Options
 
 | Name | Description |
 | ------ | ------ |
-| [IframeSandboxToken](type-aliases/IframeSandboxToken.md) | Iframe sandbox token supported by the runner client. |
-| [IframeMountMode](type-aliases/IframeMountMode.md) | How the runner iframe should be mounted into its container. |
-| [RunnerReconnectOptions](interfaces/RunnerReconnectOptions.md) | Controls how a runner reconnect restores previously requested code. |
-| [DEFAULT\_IFRAME\_SANDBOX\_TOKENS](variables/DEFAULT_IFRAME_SANDBOX_TOKENS.md) | Default sandbox tokens used by the runner iframe. |
 | [IframeTextmodeRuntimeOptions](interfaces/IframeTextmodeRuntimeOptions.md) | Options for [IframeTextmodeRuntime](classes/IframeTextmodeRuntime.md). |
+| [RunnerReconnectOptions](interfaces/RunnerReconnectOptions.md) | Controls how a runner reconnect restores previously requested code. |
+| [IframeMountMode](type-aliases/IframeMountMode.md) | How the runner iframe should be mounted into its container. |
+| [IframeSandboxToken](type-aliases/IframeSandboxToken.md) | Iframe sandbox token supported by the runner client. |
+| [DEFAULT\_IFRAME\_SANDBOX\_TOKENS](variables/DEFAULT_IFRAME_SANDBOX_TOKENS.md) | Default sandbox tokens used by the runner iframe. |
+
+## Other
+
+| Interface | Description |
+| ------ | ------ |
+| [RunnerProbeOptions](interfaces/RunnerProbeOptions.md) | Controls a transactional code probe. |
 
 ## Runtime
 

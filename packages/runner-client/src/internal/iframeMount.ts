@@ -1,6 +1,9 @@
 import type { IframeMountMode, IframeSandboxToken } from '../options';
 
-export function createRunnerIframe(runnerHref: string, sandboxTokens: readonly IframeSandboxToken[]): HTMLIFrameElement {
+export function createRunnerIframe(
+	runnerHref: string,
+	sandboxTokens: readonly IframeSandboxToken[]
+): HTMLIFrameElement {
 	const iframe = document.createElement('iframe');
 	iframe.id = 'textmode-sandbox-runner';
 	iframe.title = 'textmode.js sandboxed runner';

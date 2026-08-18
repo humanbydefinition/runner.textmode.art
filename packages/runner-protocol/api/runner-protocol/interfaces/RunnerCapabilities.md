@@ -1,6 +1,13 @@
 ---
 layout: doc
-editLink: true
+editLink: false
+title: RunnerCapabilities
+description: Feature flags advertised by a ready runner iframe.
+category: Interfaces
+api: true
+kind: Interface
+lastModified: 2026-08-18
+isInterface: true
 ---
 
 [@textmode/runner-protocol](../index.md) / RunnerCapabilities

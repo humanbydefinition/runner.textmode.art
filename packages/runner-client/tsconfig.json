@@ -1,18 +1,16 @@
 {
-    "extends": "../../tsconfig.base.json",
-    "compilerOptions": {
-        "composite": true,
-        "declaration": true,
-        "declarationMap": false,
-        "outDir": "dist",
-        "rootDir": "src",
-        "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
-        "paths": {
-            "@textmode/runner-protocol": ["../runner-protocol/src/index.ts"]
-        }
-    },
-    "include": ["src"],
-    "references": [
-        { "path": "../runner-protocol" }
-    ]
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"composite": true,
+		"declaration": true,
+		"declarationMap": false,
+		"outDir": "dist",
+		"rootDir": "src",
+		"tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
+		"paths": {
+			"@textmode/runner-protocol": ["../runner-protocol/dist/index.d.ts"]
+		}
+	},
+	"include": ["src"],
+	"references": [{ "path": "../runner-protocol" }]
 }
