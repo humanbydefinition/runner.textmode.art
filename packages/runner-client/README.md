@@ -167,4 +167,4 @@ The runtime refuses to start a runner that combines `allow-scripts` and
 
 ## License
 
-The `@textmode/runner-client` package is licensed under the [AGPL-3.0 License](./LICENSE).
+The `@textmode/runner-client` package is licensed under the [AGPL-3.0-or-later License](./LICENSE).
