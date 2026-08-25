@@ -99,4 +99,4 @@ during the Vite build so GitHub Pages keeps serving the custom domain.
 
 ## License
 
-The `@textmode/runner-app` package is licensed under the [AGPL-3.0 License](./LICENSE).
+The `@textmode/runner-app` package is licensed under the [AGPL-3.0-or-later License](./LICENSE).

@@ -9,7 +9,7 @@ pieces they need without copying integration code between projects.
 | Package                                              | Purpose                                                  | License |
 | ---------------------------------------------------- | -------------------------------------------------------- | ------- |
 | [`@textmode/runner-protocol`](./runner-protocol/README.md) | Shared wire protocol types, capabilities, and validators | CC0-1.0 |
-| [`@textmode/runner-client`](./runner-client/README.md)     | Browser iframe client for embedding the runner in apps   | AGPL-3.0 |
+| [`@textmode/runner-client`](./runner-client/README.md)     | Browser iframe client for embedding the runner in apps   | AGPL-3.0-or-later |
 
 ## Development
 

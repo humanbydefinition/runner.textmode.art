@@ -50,9 +50,9 @@ with no local toolchain required.
 
 | Workspace | Purpose | License |
 |:--|:--|:--|
-| [`apps/runner`](./apps/runner) | Hosted Vite app deployed to [runner.textmode.art](https://runner.textmode.art). | AGPL-3.0 |
+| [`apps/runner`](./apps/runner) | Hosted Vite app deployed to [runner.textmode.art](https://runner.textmode.art). | AGPL-3.0-or-later |
 | [`packages/runner-protocol`](./packages/runner-protocol) | Shared wire protocol types, capabilities, and runtime validators. | CC0-1.0 |
-| [`packages/runner-client`](./packages/runner-client) | Browser iframe client for embedding the runner in host apps. | AGPL-3.0 |
+| [`packages/runner-client`](./packages/runner-client) | Browser iframe client for embedding the runner in host apps. | AGPL-3.0-or-later |
 
 Public package imports are root-only:
 
@@ -124,8 +124,8 @@ protocol package.
 
 This monorepo contains packages under different licenses:
 
-- [`apps/runner`](./apps/runner/LICENSE): AGPL-3.0
-- [`packages/runner-client`](./packages/runner-client/LICENSE): AGPL-3.0
+- [`apps/runner`](./apps/runner/LICENSE): AGPL-3.0-or-later
+- [`packages/runner-client`](./packages/runner-client/LICENSE): AGPL-3.0-or-later
 - [`packages/runner-protocol`](./packages/runner-protocol/LICENSE): CC0-1.0
 
 The root [`LICENSE`](./LICENSE) covers the AGPL-licensed parts of the repository.
