@@ -17,6 +17,8 @@ import {
 import { HandshakeHandler } from '@/core/transport/HandshakeHandler';
 import { UserActivationPrompt } from '@/core/user-activation/UserActivationPrompt';
 import { getRunnerShortcut } from './shortcuts';
+import { ArtworkInspector } from './ArtworkInspector';
+import { ExportPreparer } from './ExportPreparer';
 
 /**
  * Concrete engine implementation for Textmode sketches.
@@ -42,6 +44,8 @@ export class TextmodeEngine {
 	private runtimeEventHandlersAttached = false;
 	private userInteractionReported = false;
 	private readonly userActivationPrompt = new UserActivationPrompt();
+	private readonly inspector = new ArtworkInspector(() => this.textmode.getInstance());
+	private readonly exportPreparer = new ExportPreparer(() => this.textmode.getInstance());
 	private readonly handleUserInteraction = (event: Event): void => {
 		if (!event.isTrusted || this.userInteractionReported) return;
 
@@ -165,11 +169,76 @@ export class TextmodeEngine {
 			case 'AUDIO_DATA':
 				this.audioReceiver.update(msg);
 				break;
+			case 'VALIDATE_CODE':
+				this.validateCode(msg.requestId, msg.code);
+				break;
+			case 'GET_RUNTIME_SUMMARY':
+				this.respondToQuery(msg.requestId, 'summary', () => ({
+					type: 'RUNTIME_SUMMARY_RESULT',
+					requestId: msg.requestId,
+					summary: this.inspector.summary(),
+				}));
+				break;
+			case 'INSPECT_ARTWORK':
+				this.respondToQuery(msg.requestId, 'inspect', () => ({
+					type: 'ARTWORK_INSPECTION_RESULT',
+					requestId: msg.requestId,
+					inspection: this.inspector.inspect(msg),
+				}));
+				break;
+			case 'PREPARE_EXPORT':
+				void this.prepareExport(msg);
+				break;
 			case 'DISPOSE':
 				this.dispose();
 				break;
 		}
 	};
+
+	private validateCode(requestId: string, code: string): void {
+		const validation = this.context.validateSyntax(code);
+		this.transport.send({
+			type: 'CODE_VALIDATION_RESULT',
+			requestId,
+			valid: validation.valid,
+			diagnostic: validation.valid
+				? undefined
+				: { message: validation.error?.message.slice(0, 300) ?? 'Invalid syntax' },
+		});
+	}
+
+	private respondToQuery(
+		requestId: string,
+		operation: 'summary' | 'inspect',
+		callback: () => Extract<RunnerToParentMessage, { requestId: string }>
+	): void {
+		try {
+			this.transport.send(callback());
+		} catch (error) {
+			this.transport.send({
+				type: 'REQUEST_ERROR',
+				requestId,
+				operation,
+				code: 'QUERY_FAILED',
+				message: safeMessage(error),
+			});
+		}
+	}
+
+	private async prepareExport(message: Extract<ParentToRunnerMessage, { type: 'PREPARE_EXPORT' }>): Promise<void> {
+		try {
+			const artifact = await this.exportPreparer.prepare(message);
+			this.transport.send({ type: 'EXPORT_PREPARED', requestId: message.requestId, artifact });
+		} catch (error) {
+			this.transport.send({
+				type: 'REQUEST_ERROR',
+				requestId: message.requestId,
+				operation: 'export',
+				code: 'EXPORT_FAILED',
+				message: safeMessage(error),
+			});
+		}
+	}
 
 	private scheduleCode(code: string, mode: 'run' | 'reset-runtime', requestId?: string): void {
 		this.scheduler.schedule({ code, mode, requestId });
@@ -316,4 +385,9 @@ export class TextmodeEngine {
 	private getCapabilities(): RunnerCapabilities {
 		return createRunnerCapabilities();
 	}
+}
+
+function safeMessage(error: unknown): string {
+	const message = error instanceof Error ? error.message : 'Request failed';
+	return message.replace(/[\r\n]+/g, ' ').slice(0, 300);
 }
