@@ -14,6 +14,14 @@ export interface RunnerCapabilities {
 	runtimeReset?: boolean;
 	/** Whether the runner can request a trusted user interaction inside its iframe. */
 	userActivationPrompt?: boolean;
+	/** Whether the runner can parse sketch source without executing it. */
+	codeValidation?: boolean;
+	/** Whether the runner can describe the currently rendered textmode instance. */
+	runtimeSummary?: boolean;
+	/** Whether the runner can return bounded textmode document semantics. */
+	artworkInspection?: boolean;
+	/** Whether the runner can prepare a non-downloaded export artifact. */
+	exportPreparation?: boolean;
 }
 
 /**
@@ -27,5 +35,9 @@ export function createRunnerCapabilities(): RunnerCapabilities {
 		heartbeat: true,
 		runtimeReset: true,
 		userActivationPrompt: true,
+		codeValidation: true,
+		runtimeSummary: true,
+		artworkInspection: true,
+		exportPreparation: true,
 	};
 }

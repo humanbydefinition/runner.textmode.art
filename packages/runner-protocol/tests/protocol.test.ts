@@ -38,7 +38,7 @@ describe('@textmode/runner-protocol', () => {
 		).toBe(false);
 	});
 
-	it('validates the reduced ready capabilities', () => {
+	it('validates current and backwards-compatible ready capabilities', () => {
 		const capabilities = createRunnerCapabilities();
 
 		expect(isRunnerMessage({ type: 'READY', capabilities })).toBe(true);
@@ -46,10 +46,15 @@ describe('@textmode/runner-protocol', () => {
 			heartbeat: true,
 			runtimeReset: true,
 			userActivationPrompt: true,
+			codeValidation: true,
+			runtimeSummary: true,
+			artworkInspection: true,
+			exportPreparation: true,
 		});
 		expect(isRunnerCapabilities({ heartbeat: true })).toBe(true);
 		expect(isRunnerCapabilities({ heartbeat: true, userActivationPrompt: false })).toBe(true);
 		expect(isRunnerCapabilities({ heartbeat: true, userActivationPrompt: 'yes' })).toBe(false);
+		expect(isRunnerCapabilities({ heartbeat: true, codeValidation: 'yes' })).toBe(false);
 	});
 
 	it('rejects removed editor capabilities', () => {
@@ -121,6 +126,23 @@ describe('@textmode/runner-protocol', () => {
 		expect(isParentMessage({ type: 'SET_SETTINGS', requestId: 'settings_2', settings: { frameRate: 30 } })).toBe(
 			false
 		);
+		expect(isParentMessage({ type: 'VALIDATE_CODE', requestId: 'validate_1', code: 't.clear()' })).toBe(true);
+		expect(isParentMessage({ type: 'GET_RUNTIME_SUMMARY', requestId: 'summary_1' })).toBe(true);
+		expect(
+			isParentMessage({
+				type: 'INSPECT_ARTWORK',
+				requestId: 'inspect_1',
+				detail: 'cells',
+				region: { x: 0, y: 0, width: 8, height: 8 },
+			})
+		).toBe(true);
+		expect(
+			isParentMessage({ type: 'PREPARE_EXPORT', requestId: 'export_1', format: 'svg', target: 'selected' })
+		).toBe(true);
+		expect(isParentMessage({ type: 'VALIDATE_CODE', requestId: 'validate_1', code: 'x'.repeat(64_001) })).toBe(
+			false
+		);
+		expect(isParentMessage({ type: 'GET_RUNTIME_SUMMARY', requestId: 'summary_1', unexpected: true })).toBe(false);
 		expect(isParentMessage({ type: 'EXPORT', requestId: 'export_1', format: 'svg', options: {} })).toBe(false);
 		expect(
 			isParentMessage({

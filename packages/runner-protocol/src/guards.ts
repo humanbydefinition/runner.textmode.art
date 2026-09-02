@@ -10,6 +10,8 @@ import {
 
 const MAX_AUDIO_FFT_BINS = 4096;
 const MAX_AUDIO_WAVEFORM_SAMPLES = 8192;
+const MAX_CODE_CHARS = 64_000;
+const MAX_FILE_NAME_CHARS = 80;
 
 /**
  * Checks whether a value is a valid current runner-to-host message.
@@ -41,6 +43,21 @@ export function isRunnerMessage(msg: unknown): msg is RunnerToParentMessage {
 			return typeof msg.message === 'string' && isOptionalString(msg.uniformName);
 		case 'PONG':
 			return isOptionalString(msg.nonce) && isFiniteNumber(msg.timestamp);
+		case 'CODE_VALIDATION_RESULT':
+			return typeof msg.requestId === 'string' && typeof msg.valid === 'boolean';
+		case 'RUNTIME_SUMMARY_RESULT':
+			return typeof msg.requestId === 'string' && isMessageRecord(msg.summary);
+		case 'ARTWORK_INSPECTION_RESULT':
+			return typeof msg.requestId === 'string' && isMessageRecord(msg.inspection);
+		case 'EXPORT_PREPARED':
+			return typeof msg.requestId === 'string' && isMessageRecord(msg.artifact);
+		case 'REQUEST_ERROR':
+			return (
+				typeof msg.requestId === 'string' &&
+				typeof msg.operation === 'string' &&
+				typeof msg.code === 'string' &&
+				typeof msg.message === 'string'
+			);
 		default:
 			return false;
 	}
@@ -68,6 +85,34 @@ export function isParentMessage(msg: unknown): msg is ParentToRunnerMessage {
 				isBoundedUint8Array(msg.fft, MAX_AUDIO_FFT_BINS) &&
 				isBoundedUint8Array(msg.waveform, MAX_AUDIO_WAVEFORM_SAMPLES) &&
 				isFiniteNumber(msg.timestamp)
+			);
+		case 'VALIDATE_CODE':
+			return (
+				hasOnlyKeys(msg, ['type', 'requestId', 'code']) &&
+				typeof msg.requestId === 'string' &&
+				typeof msg.code === 'string' &&
+				msg.code.length <= MAX_CODE_CHARS
+			);
+		case 'GET_RUNTIME_SUMMARY':
+			return hasOnlyKeys(msg, ['type', 'requestId']) && typeof msg.requestId === 'string';
+		case 'INSPECT_ARTWORK':
+			return (
+				hasOnlyKeys(msg, ['type', 'requestId', 'detail', 'layerId', 'region', 'cursor']) &&
+				typeof msg.requestId === 'string' &&
+				(msg.detail === 'summary' || msg.detail === 'cells') &&
+				isOptionalString(msg.layerId) &&
+				isOptionalFiniteNumber(msg.cursor) &&
+				(msg.cursor === undefined || msg.cursor >= 0) &&
+				isOptionalRegion(msg.region)
+			);
+		case 'PREPARE_EXPORT':
+			return (
+				hasOnlyKeys(msg, ['type', 'requestId', 'format', 'target', 'fileName']) &&
+				typeof msg.requestId === 'string' &&
+				(msg.format === 'png' || msg.format === 'svg' || msg.format === 'txt' || msg.format === 'json') &&
+				(msg.target === 'selected' || msg.target === 'all') &&
+				isOptionalString(msg.fileName) &&
+				(msg.fileName === undefined || msg.fileName.length <= MAX_FILE_NAME_CHARS)
 			);
 		default:
 			return false;
@@ -97,9 +142,23 @@ export function isRunnerCapabilities(value: unknown): value is RunnerCapabilitie
 		typeof value.heartbeat === 'boolean' &&
 		(value.runtimeReset === undefined || typeof value.runtimeReset === 'boolean') &&
 		(value.userActivationPrompt === undefined || typeof value.userActivationPrompt === 'boolean') &&
+		(value.codeValidation === undefined || typeof value.codeValidation === 'boolean') &&
+		(value.runtimeSummary === undefined || typeof value.runtimeSummary === 'boolean') &&
+		(value.artworkInspection === undefined || typeof value.artworkInspection === 'boolean') &&
+		(value.exportPreparation === undefined || typeof value.exportPreparation === 'boolean') &&
 		!('runtimeConfig' in value) &&
 		!('exports' in value) &&
 		!('fonts' in value) &&
 		!('playback' in value)
 	);
+}
+
+function isOptionalRegion(value: unknown): boolean {
+	if (value === undefined) return true;
+	if (!isMessageRecord(value)) return false;
+	return ['x', 'y', 'width', 'height'].every((key) => isFiniteNumber(value[key]));
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, allowed: string[]): boolean {
+	return Object.keys(value).every((key) => allowed.includes(key));
 }

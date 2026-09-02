@@ -114,6 +114,59 @@ export interface PongMessage {
 	timestamp: number;
 }
 
+export interface CodeValidationResultMessage {
+	type: 'CODE_VALIDATION_RESULT';
+	requestId: string;
+	valid: boolean;
+	diagnostic?: { message: string; line?: number; column?: number };
+}
+
+export interface RuntimeSummaryResultMessage {
+	type: 'RUNTIME_SUMMARY_RESULT';
+	requestId: string;
+	summary: RuntimeSummary;
+}
+
+export interface ArtworkInspectionResultMessage {
+	type: 'ARTWORK_INSPECTION_RESULT';
+	requestId: string;
+	inspection: ArtworkInspection;
+}
+
+export interface ExportPreparedMessage {
+	type: 'EXPORT_PREPARED';
+	requestId: string;
+	artifact: PreparedExportArtifact;
+}
+
+export interface RequestErrorMessage {
+	type: 'REQUEST_ERROR';
+	requestId: string;
+	operation: 'validate' | 'summary' | 'inspect' | 'export';
+	code: string;
+	message: string;
+}
+
+export type RuntimeSummary = {
+	sampledAt: string;
+	canvas: { width: number; height: number };
+	grid: { columns: number; rows: number };
+	layers: Array<{ id: string; visible: boolean; opacity: number; blendMode: string }>;
+};
+
+export type ArtworkInspection = RuntimeSummary & {
+	region?: { x: number; y: number; width: number; height: number };
+	cells?: Array<{ x: number; y: number; ch: string; fg: string; bg: string }>;
+	nextCursor?: number | null;
+};
+
+export type PreparedExportArtifact = {
+	format: 'png' | 'svg' | 'txt' | 'json';
+	mimeType: string;
+	fileName: string;
+	data: ArrayBuffer | string;
+};
+
 /**
  * Messages sent from the runner iframe to a host app.
  *
@@ -128,7 +181,12 @@ export type RunnerToParentMessage =
 	| ToggleUIMessage
 	| UserActivationRequiredMessage
 	| UserInteractionMessage
-	| PongMessage;
+	| PongMessage
+	| CodeValidationResultMessage
+	| RuntimeSummaryResultMessage
+	| ArtworkInspectionResultMessage
+	| ExportPreparedMessage
+	| RequestErrorMessage;
 
 /**
  * Request to execute code in the runner.
@@ -194,13 +252,49 @@ export interface AudioDataMessage {
 	timestamp: number;
 }
 
+export interface ValidateCodeMessage {
+	type: 'VALIDATE_CODE';
+	requestId: string;
+	code: string;
+}
+
+export interface GetRuntimeSummaryMessage {
+	type: 'GET_RUNTIME_SUMMARY';
+	requestId: string;
+}
+
+export interface InspectArtworkMessage {
+	type: 'INSPECT_ARTWORK';
+	requestId: string;
+	detail: 'summary' | 'cells';
+	layerId?: string;
+	region?: { x: number; y: number; width: number; height: number };
+	cursor?: number;
+}
+
+export interface PrepareExportMessage {
+	type: 'PREPARE_EXPORT';
+	requestId: string;
+	format: 'png' | 'svg' | 'txt' | 'json';
+	target: 'selected' | 'all';
+	fileName?: string;
+}
+
 /**
  * Messages sent from a host app to the runner after handshake.
  *
  * @category Messages
  */
 export type ParentToRunnerMessage =
-	RunCodeMessage | ResetRuntimeMessage | DisposeMessage | PingMessage | AudioDataMessage;
+	| RunCodeMessage
+	| ResetRuntimeMessage
+	| DisposeMessage
+	| PingMessage
+	| AudioDataMessage
+	| ValidateCodeMessage
+	| GetRuntimeSummaryMessage
+	| InspectArtworkMessage
+	| PrepareExportMessage;
 
 /**
  * Messages sent to the runner iframe window before MessagePort attachment.
