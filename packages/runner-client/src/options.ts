@@ -34,6 +34,14 @@ export interface RunnerProbeOptions {
 	timeoutMs?: number;
 }
 
+/** Options shared by bounded, read-only runner requests. */
+export interface RunnerRequestOptions {
+	/** Cancel local request tracking. The runner may still finish safely. */
+	signal?: AbortSignal;
+	/** Optional operation-specific timeout. */
+	timeoutMs?: number;
+}
+
 /**
  * Default sandbox tokens used by the runner iframe.
  *

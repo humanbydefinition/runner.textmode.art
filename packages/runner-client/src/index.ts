@@ -19,5 +19,6 @@ export {
 	type IframeTextmodeRuntimeOptions,
 	type RunnerProbeOptions,
 	type RunnerReconnectOptions,
+	type RunnerRequestOptions,
 } from './options';
 export { type RunnerRuntimeStatus } from './status';

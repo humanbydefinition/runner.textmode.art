@@ -8,6 +8,14 @@ import {
 	type RunnerCapabilities,
 	type RunnerToParentMessage,
 	type RunOkMessage,
+	type ArtworkInspection,
+	type ArtworkInspectionResultMessage,
+	type CodeValidationResultMessage,
+	type ExportPreparedMessage,
+	type PreparedExportArtifact,
+	type RequestErrorMessage,
+	type RuntimeSummary,
+	type RuntimeSummaryResultMessage,
 } from '@textmode/runner-protocol';
 import { RunnerRequestError } from './errors';
 import {
@@ -17,6 +25,7 @@ import {
 	type IframeTextmodeRuntimeOptions,
 	type RunnerProbeOptions,
 	type RunnerReconnectOptions,
+	type RunnerRequestOptions,
 } from './options';
 import type { RunnerRuntimeStatus } from './status';
 import { HeartbeatController } from './internal/heartbeat';
@@ -292,6 +301,71 @@ export class IframeTextmodeRuntime {
 		return true;
 	}
 
+	async validateCode(code: string, options: RunnerRequestOptions = {}): Promise<CodeValidationResultMessage> {
+		this.requireCapability('codeValidation');
+		const requestId = this.createRequestId('validate');
+		return this.request({ type: 'VALIDATE_CODE', requestId, code }, options.timeoutMs ?? 2000, options.signal);
+	}
+
+	async getRuntimeSummary(options: RunnerRequestOptions = {}): Promise<RuntimeSummary> {
+		this.requireCapability('runtimeSummary');
+		const requestId = this.createRequestId('summary');
+		const result = await this.request<RuntimeSummaryResultMessage>(
+			{ type: 'GET_RUNTIME_SUMMARY', requestId },
+			options.timeoutMs ?? 2000,
+			options.signal
+		);
+		return result.summary;
+	}
+
+	async inspectArtwork(
+		options: {
+			detail: 'summary' | 'cells';
+			layerId?: string;
+			region?: { x: number; y: number; width: number; height: number };
+			cursor?: number;
+		} & RunnerRequestOptions
+	): Promise<ArtworkInspection> {
+		this.requireCapability('artworkInspection');
+		const requestId = this.createRequestId('inspect');
+		const result = await this.request<ArtworkInspectionResultMessage>(
+			{
+				type: 'INSPECT_ARTWORK',
+				requestId,
+				detail: options.detail,
+				layerId: options.layerId,
+				region: options.region,
+				cursor: options.cursor,
+			},
+			options.timeoutMs ?? 3000,
+			options.signal
+		);
+		return result.inspection;
+	}
+
+	async prepareExport(
+		options: {
+			format: 'png' | 'svg' | 'txt' | 'json';
+			target: 'selected' | 'all';
+			fileName?: string;
+		} & RunnerRequestOptions
+	): Promise<PreparedExportArtifact> {
+		this.requireCapability('exportPreparation');
+		const requestId = this.createRequestId('export');
+		const result = await this.request<ExportPreparedMessage>(
+			{
+				type: 'PREPARE_EXPORT',
+				requestId,
+				format: options.format,
+				target: options.target,
+				fileName: options.fileName,
+			},
+			options.timeoutMs ?? (options.format === 'png' ? 15000 : 10000),
+			options.signal
+		);
+		return result.artifact;
+	}
+
 	/**
 	 * Sends a fire-and-forget audio analysis frame to the runner.
 	 *
@@ -361,6 +435,21 @@ export class IframeTextmodeRuntime {
 			onPong: () => {
 				this.heartbeat.markPong();
 			},
+			onCodeValidationResult: (message) => {
+				this.pending.resolve(message.requestId, message);
+			},
+			onRuntimeSummaryResult: (message) => {
+				this.pending.resolve(message.requestId, message);
+			},
+			onArtworkInspectionResult: (message) => {
+				this.pending.resolve(message.requestId, message);
+			},
+			onExportPrepared: (message) => {
+				this.pending.resolve(message.requestId, message);
+			},
+			onRequestError: (message) => {
+				this.handleRequestError(message);
+			},
 		});
 	}
 
@@ -408,7 +497,11 @@ export class IframeTextmodeRuntime {
 		});
 	}
 
-	private request<T>(message: ParentToRunnerMessage, timeoutMs = this.requestTimeoutMs): Promise<T> {
+	private request<T>(
+		message: ParentToRunnerMessage,
+		timeoutMs = this.requestTimeoutMs,
+		signal?: AbortSignal
+	): Promise<T> {
 		if (!this.port || !this.ready) {
 			return Promise.reject(new Error('runner is not ready'));
 		}
@@ -424,8 +517,9 @@ export class IframeTextmodeRuntime {
 			requestId,
 			messageType: message.type,
 			timeoutMs,
+			signal,
 			onTimeout: (error) => {
-				if (kind === 'run') {
+				if (kind === 'run' || kind === 'query' || kind === 'export') {
 					return;
 				}
 
@@ -435,6 +529,16 @@ export class IframeTextmodeRuntime {
 
 		this.postMessage(message);
 		return promise;
+	}
+
+	private handleRequestError(message: RequestErrorMessage): void {
+		this.pending.reject(message.requestId, new Error(`${message.code}: ${message.message}`));
+	}
+
+	private requireCapability(capability: keyof RunnerCapabilities): void {
+		if (this.capabilities?.[capability] !== true) {
+			throw new Error(`runner does not support ${capability}`);
+		}
 	}
 
 	private postMessage(message: ParentToRunnerMessage): void {

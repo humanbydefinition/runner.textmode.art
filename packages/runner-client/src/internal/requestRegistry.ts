@@ -1,7 +1,7 @@
 import type { ParentToRunnerMessage } from '@textmode/runner-protocol';
 import { createDocumentVisibilityApi, isPageVisible, type PageVisibilityApi } from './visibility';
 
-export type RequestKind = 'run' | 'lifecycle';
+export type RequestKind = 'run' | 'query' | 'export' | 'lifecycle';
 
 export interface RequestTimerApi {
 	setTimeout: (handler: () => void, timeoutMs: number) => number;
@@ -20,6 +20,7 @@ interface RegisterRequestOptions {
 	messageType: ParentToRunnerMessage['type'];
 	timeoutMs: number;
 	onTimeout: (error: Error) => void;
+	signal?: AbortSignal;
 }
 
 export class RequestRegistry {
@@ -57,6 +58,12 @@ export class RequestRegistry {
 					timeoutId = null;
 				}
 				cleanupVisibility();
+				options.signal?.removeEventListener('abort', onAbort);
+			};
+			const onAbort = () => {
+				cleanup();
+				this.pending.delete(options.requestId);
+				reject(new DOMException('Runner request aborted', 'AbortError'));
 			};
 
 			const rejectTimedOut = () => {
@@ -105,6 +112,11 @@ export class RequestRegistry {
 				reject,
 				cleanup,
 			});
+			if (options.signal?.aborted) {
+				onAbort();
+			} else {
+				options.signal?.addEventListener('abort', onAbort, { once: true });
+			}
 		});
 	}
 
@@ -145,6 +157,12 @@ export function requestKindForMessage(type: ParentToRunnerMessage['type']): Requ
 			return 'run';
 		case 'RESET_RUNTIME':
 			return 'lifecycle';
+		case 'VALIDATE_CODE':
+		case 'GET_RUNTIME_SUMMARY':
+		case 'INSPECT_ARTWORK':
+			return 'query';
+		case 'PREPARE_EXPORT':
+			return 'export';
 		case 'PING':
 		case 'DISPOSE':
 		case 'AUDIO_DATA':

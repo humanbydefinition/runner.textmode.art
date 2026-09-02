@@ -5,6 +5,11 @@ import {
 	type RunErrorMessage,
 	type RunOkMessage,
 	type SynthErrorMessage,
+	type ArtworkInspectionResultMessage,
+	type CodeValidationResultMessage,
+	type ExportPreparedMessage,
+	type RequestErrorMessage,
+	type RuntimeSummaryResultMessage,
 } from '@textmode/runner-protocol';
 
 export interface RunnerMessageHandlers {
@@ -17,6 +22,11 @@ export interface RunnerMessageHandlers {
 	onUserActivationRequired: () => void;
 	onUserInteraction: () => void;
 	onPong: (message: PongMessage) => void;
+	onCodeValidationResult: (message: CodeValidationResultMessage) => void;
+	onRuntimeSummaryResult: (message: RuntimeSummaryResultMessage) => void;
+	onArtworkInspectionResult: (message: ArtworkInspectionResultMessage) => void;
+	onExportPrepared: (message: ExportPreparedMessage) => void;
+	onRequestError: (message: RequestErrorMessage) => void;
 }
 
 export function routeRunnerMessage(message: unknown, handlers: RunnerMessageHandlers): boolean {
@@ -51,6 +61,21 @@ export function routeRunnerMessage(message: unknown, handlers: RunnerMessageHand
 			break;
 		case 'PONG':
 			handlers.onPong(message);
+			break;
+		case 'CODE_VALIDATION_RESULT':
+			handlers.onCodeValidationResult(message);
+			break;
+		case 'RUNTIME_SUMMARY_RESULT':
+			handlers.onRuntimeSummaryResult(message);
+			break;
+		case 'ARTWORK_INSPECTION_RESULT':
+			handlers.onArtworkInspectionResult(message);
+			break;
+		case 'EXPORT_PREPARED':
+			handlers.onExportPrepared(message);
+			break;
+		case 'REQUEST_ERROR':
+			handlers.onRequestError(message);
 			break;
 	}
 
