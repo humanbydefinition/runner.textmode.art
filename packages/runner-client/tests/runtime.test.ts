@@ -378,6 +378,19 @@ describe('@textmode/runner-client', () => {
 		runtime.dispose();
 	});
 
+	it('does not send a runner query when its signal was already aborted', async () => {
+		const { runtime, env } = await connectRuntime();
+		const controller = new AbortController();
+		controller.abort();
+		const sentBefore = env.channel.port1.sent.length;
+
+		await expect(runtime.validateCode('t.clear()', { signal: controller.signal })).rejects.toMatchObject({
+			name: 'AbortError',
+		});
+		expect(env.channel.port1.sent).toHaveLength(sentBefore);
+		runtime.dispose();
+	});
+
 	it('keeps the last successful code when a probe fails', async () => {
 		const { runtime, env } = await connectRuntime();
 

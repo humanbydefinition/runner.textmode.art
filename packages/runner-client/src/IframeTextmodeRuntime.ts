@@ -502,6 +502,9 @@ export class IframeTextmodeRuntime {
 		timeoutMs = this.requestTimeoutMs,
 		signal?: AbortSignal
 	): Promise<T> {
+		if (signal?.aborted) {
+			return Promise.reject(new DOMException('Runner request aborted', 'AbortError'));
+		}
 		if (!this.port || !this.ready) {
 			return Promise.reject(new Error('runner is not ready'));
 		}
@@ -527,7 +530,11 @@ export class IframeTextmodeRuntime {
 			},
 		});
 
-		this.postMessage(message);
+		try {
+			this.postMessage(message);
+		} catch (error) {
+			this.pending.reject(requestId, error instanceof Error ? error : new Error(String(error)));
+		}
 		return promise;
 	}
 
