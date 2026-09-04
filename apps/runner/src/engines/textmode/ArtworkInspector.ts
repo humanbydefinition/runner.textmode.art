@@ -57,7 +57,11 @@ export class ArtworkInspector {
 	}): ArtworkInspection {
 		const summary = this.summary();
 		if (options.detail === 'summary') return summary;
-		if (!options.region || options.region.width * options.region.height > MAX_CELLS) {
+		if (
+			!options.region ||
+			!isValidRegion(options.region) ||
+			(options.cursor !== undefined && (!Number.isInteger(options.cursor) || options.cursor < 0))
+		) {
 			throw new Error('A region of no more than 64 cells is required');
 		}
 
@@ -113,4 +117,18 @@ function selectedLayer(document: ExportDocument): DocumentLayer {
 		grid: document.grid,
 		cells: document.layer.cells,
 	};
+}
+
+function isValidRegion(region: { x: number; y: number; width: number; height: number }): boolean {
+	return (
+		Number.isInteger(region.x) &&
+		Number.isInteger(region.y) &&
+		Number.isInteger(region.width) &&
+		Number.isInteger(region.height) &&
+		region.x >= 0 &&
+		region.y >= 0 &&
+		region.width >= 1 &&
+		region.height >= 1 &&
+		region.width * region.height <= MAX_CELLS
+	);
 }
