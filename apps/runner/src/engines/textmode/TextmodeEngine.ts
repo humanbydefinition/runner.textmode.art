@@ -228,7 +228,10 @@ export class TextmodeEngine {
 	private async prepareExport(message: Extract<ParentToRunnerMessage, { type: 'PREPARE_EXPORT' }>): Promise<void> {
 		try {
 			const artifact = await this.exportPreparer.prepare(message);
-			this.transport.send({ type: 'EXPORT_PREPARED', requestId: message.requestId, artifact });
+			this.transport.send(
+				{ type: 'EXPORT_PREPARED', requestId: message.requestId, artifact },
+				artifact.data instanceof ArrayBuffer ? [artifact.data] : undefined
+			);
 		} catch (error) {
 			this.transport.send({
 				type: 'REQUEST_ERROR',

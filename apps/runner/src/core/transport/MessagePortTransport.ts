@@ -21,9 +21,10 @@ export class MessagePortTransport<TMessage = unknown> {
 	/**
 	 * Send a message through the port if it's attached.
 	 */
-	send(message: TMessage): void {
+	send(message: TMessage, transfer?: Transferable[]): void {
 		if (!this.port) return;
-		this.port.postMessage(message);
+		if (transfer) this.port.postMessage(message, transfer);
+		else this.port.postMessage(message);
 	}
 
 	/**
