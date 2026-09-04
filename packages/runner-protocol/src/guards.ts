@@ -12,6 +12,8 @@ const MAX_AUDIO_FFT_BINS = 4096;
 const MAX_AUDIO_WAVEFORM_SAMPLES = 8192;
 const MAX_CODE_CHARS = 64_000;
 const MAX_FILE_NAME_CHARS = 80;
+const MAX_LAYER_ID_CHARS = 120;
+const MAX_INSPECTION_CELLS = 64;
 
 /**
  * Checks whether a value is a valid current runner-to-host message.
@@ -100,9 +102,10 @@ export function isParentMessage(msg: unknown): msg is ParentToRunnerMessage {
 				hasOnlyKeys(msg, ['type', 'requestId', 'detail', 'layerId', 'region', 'cursor']) &&
 				typeof msg.requestId === 'string' &&
 				(msg.detail === 'summary' || msg.detail === 'cells') &&
-				isOptionalString(msg.layerId) &&
+				isBoundedOptionalString(msg.layerId, MAX_LAYER_ID_CHARS) &&
 				isOptionalFiniteNumber(msg.cursor) &&
-				(msg.cursor === undefined || msg.cursor >= 0) &&
+				(msg.cursor === undefined || Number.isInteger(msg.cursor)) &&
+				(msg.cursor === undefined || (msg.cursor >= 0 && msg.cursor <= MAX_INSPECTION_CELLS)) &&
 				isOptionalRegion(msg.region)
 			);
 		case 'PREPARE_EXPORT':
@@ -156,7 +159,29 @@ export function isRunnerCapabilities(value: unknown): value is RunnerCapabilitie
 function isOptionalRegion(value: unknown): boolean {
 	if (value === undefined) return true;
 	if (!isMessageRecord(value)) return false;
-	return ['x', 'y', 'width', 'height'].every((key) => isFiniteNumber(value[key]));
+	if (!hasOnlyKeys(value, ['x', 'y', 'width', 'height'])) return false;
+	const { x, y, width, height } = value;
+	return (
+		isFiniteNumber(x) &&
+		isFiniteNumber(y) &&
+		isFiniteNumber(width) &&
+		isFiniteNumber(height) &&
+		Number.isInteger(x) &&
+		Number.isInteger(y) &&
+		Number.isInteger(width) &&
+		Number.isInteger(height) &&
+		x >= 0 &&
+		y >= 0 &&
+		width >= 1 &&
+		height >= 1 &&
+		width <= MAX_INSPECTION_CELLS &&
+		height <= MAX_INSPECTION_CELLS &&
+		width * height <= MAX_INSPECTION_CELLS
+	);
+}
+
+function isBoundedOptionalString(value: unknown, maxLength: number): boolean {
+	return value === undefined || (typeof value === 'string' && value.length <= maxLength);
 }
 
 function hasOnlyKeys(value: Record<string, unknown>, allowed: string[]): boolean {

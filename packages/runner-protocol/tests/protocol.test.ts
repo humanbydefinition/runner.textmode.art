@@ -142,6 +142,30 @@ describe('@textmode/runner-protocol', () => {
 		expect(isParentMessage({ type: 'VALIDATE_CODE', requestId: 'validate_1', code: 'x'.repeat(64_001) })).toBe(
 			false
 		);
+		expect(
+			isParentMessage({
+				type: 'INSPECT_ARTWORK',
+				requestId: 'inspect_1',
+				detail: 'cells',
+				region: { x: 0, y: 0, width: -1, height: 1 },
+			})
+		).toBe(false);
+		expect(
+			isParentMessage({
+				type: 'INSPECT_ARTWORK',
+				requestId: 'inspect_1',
+				detail: 'cells',
+				region: { x: 0, y: 0, width: 8, height: 9 },
+			})
+		).toBe(false);
+		expect(
+			isParentMessage({
+				type: 'INSPECT_ARTWORK',
+				requestId: 'inspect_1',
+				detail: 'cells',
+				region: { x: 0, y: 0, width: 1, height: 1, unexpected: true },
+			})
+		).toBe(false);
 		expect(isParentMessage({ type: 'GET_RUNTIME_SUMMARY', requestId: 'summary_1', unexpected: true })).toBe(false);
 		expect(isParentMessage({ type: 'EXPORT', requestId: 'export_1', format: 'svg', options: {} })).toBe(false);
 		expect(
