@@ -46,10 +46,13 @@ describe('@textmode/runner-protocol', () => {
 			heartbeat: true,
 			runtimeReset: true,
 			userActivationPrompt: true,
+			mouseEvents: true,
 		});
 		expect(isRunnerCapabilities({ heartbeat: true })).toBe(true);
 		expect(isRunnerCapabilities({ heartbeat: true, userActivationPrompt: false })).toBe(true);
+		expect(isRunnerCapabilities({ heartbeat: true, mouseEvents: true })).toBe(true);
 		expect(isRunnerCapabilities({ heartbeat: true, userActivationPrompt: 'yes' })).toBe(false);
+		expect(isRunnerCapabilities({ heartbeat: true, mouseEvents: 'yes' })).toBe(false);
 	});
 
 	it('rejects removed editor capabilities', () => {
@@ -92,6 +95,37 @@ describe('@textmode/runner-protocol', () => {
 				timestamp: Date.now(),
 			})
 		).toBe(true);
+		expect(
+			isParentMessage({
+				type: 'MOUSE_EVENT',
+				event: {
+					eventType: 'mousemove',
+					clientX: 120,
+					clientY: 240,
+					buttons: 1,
+				},
+			})
+		).toBe(true);
+		expect(
+			isParentMessage({
+				type: 'MOUSE_EVENT',
+				event: {
+					eventType: 'invalid_type',
+					clientX: 120,
+					clientY: 240,
+				},
+			})
+		).toBe(false);
+		expect(
+			isParentMessage({
+				type: 'MOUSE_EVENT',
+				event: {
+					eventType: 'mousedown',
+					clientX: Number.NaN,
+					clientY: 240,
+				},
+			})
+		).toBe(false);
 	});
 
 	it('accepts audio typed arrays from another JavaScript realm', () => {
