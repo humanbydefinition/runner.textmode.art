@@ -139,17 +139,8 @@ export class RequestRegistry {
 	}
 }
 
-export function requestKindForMessage(type: ParentToRunnerMessage['type']): RequestKind {
-	switch (type) {
-		case 'RUN_CODE':
-			return 'run';
-		case 'RESET_RUNTIME':
-			return 'lifecycle';
-		case 'PING':
-		case 'DISPOSE':
-		case 'AUDIO_DATA':
-			return 'lifecycle';
-	}
+export function requestKindForMessage(type: 'RUN_CODE' | 'RESET_RUNTIME'): RequestKind {
+	return type === 'RUN_CODE' ? 'run' : 'lifecycle';
 }
 
 function createWindowTimerApi(): RequestTimerApi {

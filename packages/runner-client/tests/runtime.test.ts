@@ -276,9 +276,6 @@ describe('@textmode/runner-client', () => {
 		expect(timeoutHandler).toHaveBeenCalledTimes(1);
 		expect(requestKindForMessage('RUN_CODE')).toBe('run');
 		expect(requestKindForMessage('RESET_RUNTIME')).toBe('lifecycle');
-		expect(requestKindForMessage('PING')).toBe('lifecycle');
-		expect(requestKindForMessage('DISPOSE')).toBe('lifecycle');
-		expect(requestKindForMessage('AUDIO_DATA')).toBe('lifecycle');
 	});
 
 	it('sends the current INIT shape during handshake', async () => {
@@ -576,6 +573,47 @@ describe('@textmode/runner-client', () => {
 			type: 'AUDIO_DATA',
 			...frame,
 		});
+		runtime.dispose();
+	});
+
+	it('sends forwarded mouse events only while the port is connected and ready', async () => {
+		const env = installFakeBrowser();
+		const runtime = new IframeTextmodeRuntime({
+			runnerUrl: 'https://runner.textmode.art/',
+		});
+		const mouseEvent = {
+			eventType: 'mousemove' as const,
+			clientX: 100,
+			clientY: 200,
+			buttons: 1,
+		};
+
+		expect(runtime.sendMouseEvent(mouseEvent)).toBe(false);
+
+		const readyPromise = runtime.init(env.container as unknown as HTMLElement);
+		env.iframe.dispatch('load');
+		env.channel.port1.deliver({ type: 'READY', capabilities });
+		await readyPromise;
+
+		expect(runtime.sendMouseEvent(mouseEvent)).toBe(true);
+		expect(env.channel.port1.sent.at(-1)).toEqual({
+			type: 'MOUSE_EVENT',
+			event: mouseEvent,
+		});
+		runtime.dispose();
+	});
+
+	it('does not send mouse events to a runner that did not advertise support', async () => {
+		const env = installFakeBrowser();
+		const runtime = new IframeTextmodeRuntime({ runnerUrl: 'https://runner.textmode.art/' });
+		const readyPromise = runtime.init(env.container as unknown as HTMLElement);
+		env.iframe.dispatch('load');
+		env.channel.port1.deliver({ type: 'READY', capabilities: { heartbeat: true } });
+		await readyPromise;
+
+		const sentCount = env.channel.port1.sent.length;
+		expect(runtime.sendMouseEvent({ eventType: 'mousemove', clientX: 1, clientY: 2 })).toBe(false);
+		expect(env.channel.port1.sent).toHaveLength(sentCount);
 		runtime.dispose();
 	});
 
