@@ -14,6 +14,8 @@ export interface RunnerCapabilities {
 	runtimeReset?: boolean;
 	/** Whether the runner can request a trusted user interaction inside its iframe. */
 	userActivationPrompt?: boolean;
+	/** Whether the runner supports forwarded mouse events. */
+	mouseEvents?: boolean;
 }
 
 /**
@@ -27,5 +29,6 @@ export function createRunnerCapabilities(): RunnerCapabilities {
 		heartbeat: true,
 		runtimeReset: true,
 		userActivationPrompt: true,
+		mouseEvents: true,
 	};
 }

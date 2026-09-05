@@ -6,6 +6,7 @@ import {
 	isMessageRecord,
 	isOptionalFiniteNumber,
 	isOptionalString,
+	isRunnerMouseEventPayload,
 } from './guards.internal';
 
 const MAX_AUDIO_FFT_BINS = 4096;
@@ -69,6 +70,8 @@ export function isParentMessage(msg: unknown): msg is ParentToRunnerMessage {
 				isBoundedUint8Array(msg.waveform, MAX_AUDIO_WAVEFORM_SAMPLES) &&
 				isFiniteNumber(msg.timestamp)
 			);
+		case 'MOUSE_EVENT':
+			return isRunnerMouseEventPayload(msg.event);
 		default:
 			return false;
 	}
@@ -97,6 +100,7 @@ export function isRunnerCapabilities(value: unknown): value is RunnerCapabilitie
 		typeof value.heartbeat === 'boolean' &&
 		(value.runtimeReset === undefined || typeof value.runtimeReset === 'boolean') &&
 		(value.userActivationPrompt === undefined || typeof value.userActivationPrompt === 'boolean') &&
+		(value.mouseEvents === undefined || typeof value.mouseEvents === 'boolean') &&
 		!('runtimeConfig' in value) &&
 		!('exports' in value) &&
 		!('fonts' in value) &&

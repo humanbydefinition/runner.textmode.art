@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => {
 		show: vi.fn(),
 	};
 	const instance = {
-		canvas: { remove: vi.fn() },
+		canvas: { remove: vi.fn(), dispatchEvent: vi.fn() },
 		destroy: vi.fn(),
 		exportOverlay: { hide: vi.fn() },
 		frameCount: 123,
@@ -85,6 +85,23 @@ describe('TextmodeManager', () => {
 				appendChild: vi.fn(),
 			},
 		});
+		vi.stubGlobal(
+			'MouseEvent',
+			class FakeMouseEvent {
+				type: string;
+				clientX: number;
+				clientY: number;
+				button: number;
+				buttons: number;
+				constructor(type: string, init?: MouseEventInit) {
+					this.type = type;
+					this.clientX = init?.clientX ?? 0;
+					this.clientY = init?.clientY ?? 0;
+					this.button = init?.button ?? 0;
+					this.buttons = init?.buttons ?? 0;
+				}
+			}
+		);
 	});
 
 	afterEach(() => {
@@ -196,5 +213,78 @@ describe('TextmodeManager', () => {
 		expect(mocks.textmodeCreate).toHaveBeenCalledTimes(2);
 		expect(mocks.instance.destroy).toHaveBeenCalledOnce();
 		expect(document.body.appendChild).toHaveBeenCalledTimes(2);
+	});
+
+	it('dispatches synthetic MouseEvents to canvas', async () => {
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+
+		manager.init();
+		manager.dispatchMouseEvent({
+			eventType: 'mousemove',
+			clientX: 150,
+			clientY: 250,
+			buttons: 1,
+		});
+
+		expect(mocks.instance.canvas.dispatchEvent).toHaveBeenCalledOnce();
+		const call = mocks.instance.canvas.dispatchEvent.mock.calls[0];
+		expect(call).toBeDefined();
+		const dispatched = call![0] as MouseEvent;
+		expect(dispatched.type).toBe('mousemove');
+		expect(dispatched.clientX).toBe(150);
+		expect(dispatched.clientY).toBe(250);
+		expect(dispatched.buttons).toBe(1);
+	});
+
+	it.each([
+		{ button: 0, buttons: 1 },
+		{ button: 2, buttons: 2 },
+		{ button: 1, buttons: 4 },
+	])('derives the DOM button bitmask for button $button', async ({ button, buttons }) => {
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+
+		manager.init();
+		manager.dispatchMouseEvent({ eventType: 'mousedown', clientX: 0, clientY: 0, button });
+
+		const dispatched = mocks.instance.canvas.dispatchEvent.mock.calls[0]![0] as MouseEvent;
+		expect(dispatched.buttons).toBe(buttons);
+	});
+
+	it('defaults an omitted mousedown button to the primary-button mask', async () => {
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+
+		manager.init();
+		manager.dispatchMouseEvent({ eventType: 'mousedown', clientX: 0, clientY: 0 });
+
+		const dispatched = mocks.instance.canvas.dispatchEvent.mock.calls[0]![0] as MouseEvent;
+		expect(dispatched.button).toBe(0);
+		expect(dispatched.buttons).toBe(1);
+	});
+
+	it('preserves an explicit buttons value instead of deriving one', async () => {
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+
+		manager.init();
+		manager.dispatchMouseEvent({ eventType: 'mousedown', clientX: 0, clientY: 0, button: 2, buttons: 0 });
+
+		const dispatched = mocks.instance.canvas.dispatchEvent.mock.calls[0]![0] as MouseEvent;
+		expect(dispatched.buttons).toBe(0);
+	});
+
+	it('preserves coordinates for non-bubbling mouseleave events', async () => {
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+
+		manager.init();
+		manager.dispatchMouseEvent({ eventType: 'mouseleave', clientX: 75, clientY: 125 });
+
+		const dispatched = mocks.instance.canvas.dispatchEvent.mock.calls[0]![0] as MouseEvent;
+		expect(dispatched.type).toBe('mouseleave');
+		expect(dispatched.clientX).toBe(75);
+		expect(dispatched.clientY).toBe(125);
 	});
 });

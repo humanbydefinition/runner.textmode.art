@@ -3,6 +3,7 @@ import { ExportPlugin } from 'textmode.export.js';
 import { FigletPlugin } from 'textmode.figlet.js';
 import { SynthPlugin, setGlobalErrorCallback } from 'textmode.synth.js';
 import { FiltersPlugin } from 'textmode.filters.js';
+import type { RunnerMouseEventPayload } from '@textmode/runner-protocol';
 import type { SynthLayer } from './textmode.types';
 
 type TextmodeSettings = {
@@ -24,6 +25,7 @@ const DEFAULT_SETTINGS: Omit<TextmodeSettings, 'width' | 'height'> = {
 	fontSize: 16,
 	frameRate: 60,
 };
+const BUTTON_MASKS = [1, 4, 2] as const;
 
 /**
  * TextmodeManager - manages the textmode.js instance lifecycle.
@@ -49,6 +51,21 @@ export class TextmodeManager {
 	 */
 	getInstance(): Textmodifier | null {
 		return this.instance;
+	}
+
+	/**
+	 * Dispatch a forwarded mouse event to the textmode canvas.
+	 */
+	dispatchMouseEvent(event: RunnerMouseEventPayload): void {
+		if (!this.instance?.canvas || typeof MouseEvent === 'undefined') return;
+
+		const { eventType, ...init } = event;
+		const bubbles = eventType !== 'mouseleave';
+		const button = event.button ?? 0;
+		const buttons = event.buttons ?? (eventType === 'mousedown' ? (BUTTON_MASKS[button] ?? 0) : 0);
+		(this.instance.canvas as HTMLCanvasElement).dispatchEvent(
+			new MouseEvent(eventType, { ...init, button, buttons, bubbles, cancelable: bubbles })
+		);
 	}
 
 	/**

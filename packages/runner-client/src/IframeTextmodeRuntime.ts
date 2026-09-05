@@ -6,6 +6,7 @@ import {
 	type ReadyMessage,
 	type RunErrorMessage,
 	type RunnerCapabilities,
+	type RunnerMouseEventPayload,
 	type RunnerToParentMessage,
 	type RunOkMessage,
 } from '@textmode/runner-protocol';
@@ -314,6 +315,26 @@ export class IframeTextmodeRuntime {
 		return true;
 	}
 
+	/**
+	 * Sends a fire-and-forget mouse event to the runner.
+	 *
+	 * Mouse events are intentionally not request-tracked: hosts may send them at
+	 * animation-frame or user input cadence, and stale events can be safely dropped.
+	 *
+	 * @category Runtime
+	 */
+	sendMouseEvent(event: RunnerMouseEventPayload): boolean {
+		if (!this.port || !this.ready || this.capabilities?.mouseEvents !== true) {
+			return false;
+		}
+
+		this.postMessage({
+			type: 'MOUSE_EVENT',
+			event,
+		});
+		return true;
+	}
+
 	private connectPort(): void {
 		if (!this.iframe?.contentWindow) {
 			this.handleUnavailable('runner frame is unavailable');
@@ -413,12 +434,12 @@ export class IframeTextmodeRuntime {
 			return Promise.reject(new Error('runner is not ready'));
 		}
 
-		const requestId = 'requestId' in message ? message.requestId : undefined;
-		if (!requestId) {
+		if (!('requestId' in message) || !message.requestId) {
 			this.postMessage(message);
 			return Promise.resolve(undefined as T);
 		}
 
+		const requestId = message.requestId;
 		const kind = requestKindForMessage(message.type);
 		const promise = this.pending.register<T>({
 			requestId,

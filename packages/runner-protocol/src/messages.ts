@@ -195,12 +195,54 @@ export interface AudioDataMessage {
 }
 
 /**
+ * Fire-and-forget mouse event forwarded from host app.
+ *
+ * @category Messages
+ */
+export const RUNNER_MOUSE_EVENT_TYPES = [
+	'mousemove',
+	'mousedown',
+	'mouseup',
+	'click',
+	'dblclick',
+	'mouseleave',
+] as const;
+
+export type RunnerMouseEventType = (typeof RUNNER_MOUSE_EVENT_TYPES)[number];
+
+export interface RunnerMouseEventPayload {
+	/** DOM mouse event type */
+	eventType: RunnerMouseEventType;
+	/** Viewport X coordinate */
+	clientX: number;
+	/** Viewport Y coordinate */
+	clientY: number;
+	/** Mouse button (0=left, 1=middle, 2=right) */
+	button?: number;
+	/** Bitmask of currently pressed buttons */
+	buttons?: number;
+	/** Whether Alt key was pressed */
+	altKey?: boolean;
+	/** Whether Ctrl key was pressed */
+	ctrlKey?: boolean;
+	/** Whether Meta/Cmd key was pressed */
+	metaKey?: boolean;
+	/** Whether Shift key was pressed */
+	shiftKey?: boolean;
+}
+
+export interface MouseEventMessage {
+	type: 'MOUSE_EVENT';
+	event: RunnerMouseEventPayload;
+}
+
+/**
  * Messages sent from a host app to the runner after handshake.
  *
  * @category Messages
  */
 export type ParentToRunnerMessage =
-	RunCodeMessage | ResetRuntimeMessage | DisposeMessage | PingMessage | AudioDataMessage;
+	RunCodeMessage | ResetRuntimeMessage | DisposeMessage | PingMessage | AudioDataMessage | MouseEventMessage;
 
 /**
  * Messages sent to the runner iframe window before MessagePort attachment.

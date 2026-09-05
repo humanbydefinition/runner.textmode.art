@@ -21,3 +21,4 @@ export {
 	type RunnerReconnectOptions,
 } from './options';
 export { type RunnerRuntimeStatus } from './status';
+export { type RunnerMouseEventPayload, type RunnerMouseEventType } from '@textmode/runner-protocol';
