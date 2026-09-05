@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS: Omit<TextmodeSettings, 'width' | 'height'> = {
 	fontSize: 16,
 	frameRate: 60,
 };
+const BUTTON_MASKS = [1, 4, 2] as const;
 
 /**
  * TextmodeManager - manages the textmode.js instance lifecycle.
@@ -60,9 +61,10 @@ export class TextmodeManager {
 
 		const { eventType, ...init } = event;
 		const bubbles = eventType !== 'mouseleave';
-		const buttons = event.buttons ?? (eventType === 'mousedown' ? 1 : 0);
+		const button = event.button ?? 0;
+		const buttons = event.buttons ?? (eventType === 'mousedown' ? (BUTTON_MASKS[button] ?? 0) : 0);
 		(this.instance.canvas as HTMLCanvasElement).dispatchEvent(
-			new MouseEvent(eventType, { ...init, buttons, bubbles, cancelable: bubbles })
+			new MouseEvent(eventType, { ...init, button, buttons, bubbles, cancelable: bubbles })
 		);
 	}
 
