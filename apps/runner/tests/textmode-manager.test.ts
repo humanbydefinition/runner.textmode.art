@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => {
 		show: vi.fn(),
 	};
 	const instance = {
-		canvas: { remove: vi.fn() },
+		canvas: { remove: vi.fn(), dispatchEvent: vi.fn() },
 		destroy: vi.fn(),
 		exportOverlay: { hide: vi.fn() },
 		frameCount: 123,
@@ -85,6 +85,23 @@ describe('TextmodeManager', () => {
 				appendChild: vi.fn(),
 			},
 		});
+		vi.stubGlobal(
+			'MouseEvent',
+			class FakeMouseEvent {
+				type: string;
+				clientX: number;
+				clientY: number;
+				button: number;
+				buttons: number;
+				constructor(type: string, init?: MouseEventInit) {
+					this.type = type;
+					this.clientX = init?.clientX ?? 0;
+					this.clientY = init?.clientY ?? 0;
+					this.button = init?.button ?? 0;
+					this.buttons = init?.buttons ?? 0;
+				}
+			}
+		);
 	});
 
 	afterEach(() => {
@@ -196,5 +213,40 @@ describe('TextmodeManager', () => {
 		expect(mocks.textmodeCreate).toHaveBeenCalledTimes(2);
 		expect(mocks.instance.destroy).toHaveBeenCalledOnce();
 		expect(document.body.appendChild).toHaveBeenCalledTimes(2);
+	});
+
+	it('dispatches synthetic MouseEvents to canvas', async () => {
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+
+		manager.init();
+		manager.dispatchMouseEvent({
+			eventType: 'mousemove',
+			clientX: 150,
+			clientY: 250,
+			buttons: 1,
+		});
+
+		expect(mocks.instance.canvas.dispatchEvent).toHaveBeenCalledOnce();
+		const call = mocks.instance.canvas.dispatchEvent.mock.calls[0];
+		expect(call).toBeDefined();
+		const dispatched = call![0] as MouseEvent;
+		expect(dispatched.type).toBe('mousemove');
+		expect(dispatched.clientX).toBe(150);
+		expect(dispatched.clientY).toBe(250);
+		expect(dispatched.buttons).toBe(1);
+	});
+
+	it('preserves coordinates for non-bubbling mouseleave events', async () => {
+		const { TextmodeManager } = await import('../src/engines/textmode/TextmodeManager');
+		const manager = new TextmodeManager();
+
+		manager.init();
+		manager.dispatchMouseEvent({ eventType: 'mouseleave', clientX: 75, clientY: 125 });
+
+		const dispatched = mocks.instance.canvas.dispatchEvent.mock.calls[0]![0] as MouseEvent;
+		expect(dispatched.type).toBe('mouseleave');
+		expect(dispatched.clientX).toBe(75);
+		expect(dispatched.clientY).toBe(125);
 	});
 });

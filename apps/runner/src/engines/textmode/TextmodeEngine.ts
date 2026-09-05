@@ -165,6 +165,10 @@ export class TextmodeEngine {
 			case 'AUDIO_DATA':
 				this.audioReceiver.update(msg);
 				break;
+			case 'MOUSE_EVENT':
+				this.ensureRuntimeInitialized();
+				this.textmode.dispatchMouseEvent(msg.event);
+				break;
 			case 'DISPOSE':
 				this.dispose();
 				break;

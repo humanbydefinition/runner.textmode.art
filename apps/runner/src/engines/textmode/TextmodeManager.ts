@@ -3,6 +3,7 @@ import { ExportPlugin } from 'textmode.export.js';
 import { FigletPlugin } from 'textmode.figlet.js';
 import { SynthPlugin, setGlobalErrorCallback } from 'textmode.synth.js';
 import { FiltersPlugin } from 'textmode.filters.js';
+import type { RunnerMouseEventPayload } from '@textmode/runner-protocol';
 import type { SynthLayer } from './textmode.types';
 
 type TextmodeSettings = {
@@ -49,6 +50,20 @@ export class TextmodeManager {
 	 */
 	getInstance(): Textmodifier | null {
 		return this.instance;
+	}
+
+	/**
+	 * Dispatch a forwarded mouse event to the textmode canvas.
+	 */
+	dispatchMouseEvent(event: RunnerMouseEventPayload): void {
+		if (!this.instance?.canvas || typeof MouseEvent === 'undefined') return;
+
+		const { eventType, ...init } = event;
+		const bubbles = eventType !== 'mouseleave';
+		const buttons = event.buttons ?? (eventType === 'mousedown' ? 1 : 0);
+		(this.instance.canvas as HTMLCanvasElement).dispatchEvent(
+			new MouseEvent(eventType, { ...init, buttons, bubbles, cancelable: bubbles })
+		);
 	}
 
 	/**
