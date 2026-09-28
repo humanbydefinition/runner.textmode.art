@@ -38,7 +38,7 @@
 	},
 	"prettier": "@textmode/lint/prettier",
 	"devDependencies": {
-		"@textmode/build": "^0.1.1",
+		"@textmode/build": "^0.1.2",
 		"@textmode/docs": "^0.3.0",
 		"@textmode/lint": "^0.1.2",
 		"@textmode/tsconfig": "^0.2.2",
